@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import db, User
 from werkzeug.security import generate_password_hash
+from app.utils.firebase_client import get_db
+from datetime import datetime
 import re
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -53,6 +55,29 @@ def register():
         try:
             db.session.add(new_user)
             db.session.commit()
+            
+            # Sync to Firestore if enabled
+            if current_app.config.get('FIREBASE_ENABLED'):
+                fs_db = get_db()
+                if fs_db:
+                    try:
+                        user_data = {
+                            'id': new_user.id,
+                            'username': new_user.username,
+                            'email': new_user.email,
+                            'full_name': new_user.full_name,
+                            'phone': new_user.phone,
+                            'role': new_user.role,
+                            'wallet_balance': float(new_user.wallet_balance),
+                            'is_active': new_user.is_active,
+                            'created_at': datetime.utcnow().isoformat(),
+                            'synced_from': 'register'
+                        }
+                        fs_db.collection('users').document(str(new_user.id)).set(user_data)
+                        print(f'[Firebase] User {new_user.email} synced to Firestore')
+                    except Exception as firebase_error:
+                        print(f'[Firebase] Failed to sync user: {firebase_error}')
+            
             flash('Đăng ký thành công! Vui lòng đăng nhập.', 'success')
             return redirect(url_for('auth.login'))
         except Exception as e:
