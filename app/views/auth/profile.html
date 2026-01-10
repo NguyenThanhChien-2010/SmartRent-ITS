@@ -1,0 +1,588 @@
+{% extends "base.html" %} {% block title %}Thông tin cá nhân - SmartRent{%
+endblock %} {% block extra_css %}
+<style>
+  .profile-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+  }
+  .profile-avatar {
+    width: 120px;
+    height: 120px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: #667eea;
+    margin: 0 auto 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  .stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s;
+    height: 100%;
+  }
+  .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  }
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .info-row {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+  .info-row:last-child {
+    border-bottom: none;
+  }
+  .badge-role {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+  .trip-item {
+    border-left: 3px solid #667eea;
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="profile-header">
+  <div class="container">
+    <div class="profile-avatar">
+      <i class="fas fa-user"></i>
+    </div>
+    <div class="text-center">
+      <h2>{{ user.full_name or user.username }}</h2>
+      <p class="mb-2">
+        <span
+          class="badge badge-role {% if user.role == 'admin' %}bg-danger{% else %}bg-primary{% endif %}"
+        >
+          {% if user.role == 'admin' %}
+          <i class="fas fa-crown"></i> Quản trị viên {% elif user.role ==
+          'operator' %} <i class="fas fa-user-tie"></i> Điều hành {% else %}
+          <i class="fas fa-user"></i> Khách hàng {% endif %}
+        </span>
+      </p>
+      <p><i class="fas fa-envelope"></i> {{ user.email }}</p>
+    </div>
+  </div>
+</div>
+
+<div class="container mb-5">
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    {% if user.role == 'admin' %}
+    <!-- Admin Statistics -->
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+          <i class="fas fa-users"></i>
+        </div>
+        <h6 class="text-muted">Tổng người dùng</h6>
+        <h3 class="mb-0">-</h3>
+        <small class="text-muted">Xem trong Dashboard</small>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+          <i class="fas fa-car"></i>
+        </div>
+        <h6 class="text-muted">Tổng phương tiện</h6>
+        <h3 class="mb-0">-</h3>
+        <small class="text-muted">Xem trong Dashboard</small>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-success bg-opacity-10 text-success">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <h6 class="text-muted">Doanh thu</h6>
+        <h3 class="mb-0">-</h3>
+        <small class="text-muted">Xem trong Dashboard</small>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h6 class="text-muted">Cảnh báo</h6>
+        <h3 class="mb-0">-</h3>
+        <small class="text-muted">Xem trong Dashboard</small>
+      </div>
+    </div>
+    {% else %}
+    <!-- Customer Statistics -->
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+          <i class="fas fa-wallet"></i>
+        </div>
+        <h6 class="text-muted">Số dư ví</h6>
+        <h3 class="mb-0">{{ "{:,.0f}".format(user.wallet_balance) }} ₫</h3>
+        <small class="text-muted">VND</small>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-success bg-opacity-10 text-success">
+          <i class="fas fa-route"></i>
+        </div>
+        <h6 class="text-muted">Tổng chuyến đi</h6>
+        <h3 class="mb-0">{{ user.trips.count() }}</h3>
+        <small class="text-muted">chuyến</small>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+          <i class="fas fa-clock"></i>
+        </div>
+        <h6 class="text-muted">Đang thực hiện</h6>
+        <h3 class="mb-0">
+          {{ user.trips.filter_by(status='in_progress').count() }}
+        </h3>
+        <small class="text-muted">chuyến</small>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="stat-card">
+        <div class="stat-icon bg-info bg-opacity-10 text-info">
+          <i class="fas fa-star"></i>
+        </div>
+        <h6 class="text-muted">Trạng thái</h6>
+        <h3 class="mb-0">
+          {% if user.is_verified %}
+          <i class="fas fa-check-circle text-success"></i>
+          {% else %}
+          <i class="fas fa-times-circle text-warning"></i>
+          {% endif %}
+        </h3>
+        <small class="text-muted">
+          {% if user.is_verified %}Đã xác thực{% else %}Chưa xác thực{% endif %}
+        </small>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Main Content -->
+  <div class="row">
+    <!-- User Information -->
+    <div class="col-md-6 mb-4">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-user-circle"></i> Thông tin cá nhân
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="info-row">
+            <div class="d-flex justify-content-between">
+              <strong
+                ><i class="fas fa-user text-primary"></i> Tên đăng nhập:</strong
+              >
+              <span>{{ user.username }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="d-flex justify-content-between">
+              <strong
+                ><i class="fas fa-id-card text-success"></i> Họ và tên:</strong
+              >
+              <span>{{ user.full_name or 'Chưa cập nhật' }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="d-flex justify-content-between">
+              <strong><i class="fas fa-envelope text-info"></i> Email:</strong>
+              <span>{{ user.email }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="d-flex justify-content-between">
+              <strong
+                ><i class="fas fa-phone text-warning"></i> Số điện
+                thoại:</strong
+              >
+              <span>{{ user.phone or 'Chưa cập nhật' }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="d-flex justify-content-between">
+              <strong
+                ><i class="fas fa-calendar text-secondary"></i> Ngày tham
+                gia:</strong
+              >
+              <span>{{ user.created_at.strftime('%d/%m/%Y') }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="d-flex justify-content-between">
+              <strong
+                ><i class="fas fa-shield-alt text-danger"></i> Vai trò:</strong
+              >
+              <span>
+                {% if user.role == 'admin' %}Quản trị viên {% elif user.role ==
+                'operator' %}Điều hành {% else %}Khách hàng{% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="d-grid gap-2">
+            <a
+              href="{{ url_for('auth.edit_profile') }}"
+              class="btn btn-primary"
+            >
+              <i class="fas fa-edit"></i> Chỉnh sửa thông tin
+            </a>
+            <a
+              href="{{ url_for('auth.change_password') }}"
+              class="btn btn-outline-secondary"
+            >
+              <i class="fas fa-key"></i> Đổi mật khẩu
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="col-md-6 mb-4">
+      {% if user.role == 'admin' %}
+      <!-- Admin Quick Links -->
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-tachometer-alt"></i> Quản trị nhanh
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="list-group list-group-flush">
+            <a
+              href="{{ url_for('admin.dashboard') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-chart-line text-primary"></i> Dashboard
+              <small class="text-muted d-block"
+                >Xem thống kê tổng quan hệ thống</small
+              >
+            </a>
+            <a
+              href="{{ url_for('admin.manage_users') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-users text-success"></i> Quản lý người dùng
+              <small class="text-muted d-block">Xem và quản lý tài khoản</small>
+            </a>
+            <a
+              href="{{ url_for('admin.manage_vehicles') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-car text-info"></i> Quản lý phương tiện
+              <small class="text-muted d-block">Xem và quản lý xe</small>
+            </a>
+            <a
+              href="{{ url_for('trip.trip_history') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-route text-warning"></i> Quản lý chuyến đi
+              <small class="text-muted d-block">Xem tất cả chuyến đi</small>
+            </a>
+            <a
+              href="{{ url_for('admin.emergency_alerts') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-exclamation-triangle text-danger"></i> Cảnh báo
+              khẩn cấp
+              <small class="text-muted d-block">Xử lý cảnh báo và sự cố</small>
+            </a>
+            <a
+              href="{{ url_for('admin.manage_maintenance') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-wrench text-secondary"></i> Bảo trì
+              <small class="text-muted d-block">Lịch bảo trì phương tiện</small>
+            </a>
+          </div>
+        </div>
+        <div class="card-footer">
+          <a
+            href="{{ url_for('admin.dashboard') }}"
+            class="btn btn-danger btn-sm w-100"
+          >
+            <i class="fas fa-crown"></i> Vào trang quản trị
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <!-- Customer Recent Trips -->
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><i class="fas fa-history"></i> Chuyến đi gần đây</h5>
+        </div>
+        <div class="card-body">
+          {% if recent_trips %} {% for trip in recent_trips %}
+          <div class="trip-item">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fas fa-car"></i> {{ trip.trip_code }} {% if
+                  trip.status == 'completed' %}
+                  <span class="badge bg-success">Hoàn thành</span>
+                  {% elif trip.status == 'in_progress' %}
+                  <span class="badge bg-warning">Đang thực hiện</span>
+                  {% else %}
+                  <span class="badge bg-secondary">Đã hủy</span>
+                  {% endif %}
+                </h6>
+                <small class="text-muted">
+                  <i class="fas fa-clock"></i> {{
+                  trip.start_time.strftime('%d/%m/%Y %H:%M') }}
+                </small>
+                {% if trip.distance_km %}
+                <br />
+                <small class="text-muted">
+                  <i class="fas fa-road"></i> {{ "%.2f"|format(trip.distance_km)
+                  }} km
+                </small>
+                {% endif %} {% if trip.duration_minutes %}
+                <small class="text-muted">
+                  <i class="fas fa-hourglass-half"></i> {{
+                  "%.0f"|format(trip.duration_minutes) }} phút
+                </small>
+                {% endif %}
+              </div>
+              {% if trip.total_cost %}
+              <div class="text-end">
+                <strong class="text-primary"
+                  >{{ "{:,.0f}".format(trip.total_cost) }} ₫</strong
+                >
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %} {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="fas fa-inbox fa-3x mb-3"></i>
+            <p>Chưa có chuyến đi nào</p>
+            <a
+              href="{{ url_for('vehicle.vehicle_map') }}"
+              class="btn btn-primary"
+            >
+              <i class="fas fa-map-marked-alt"></i> Bắt đầu thuê xe
+            </a>
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-footer">
+          <a
+            href="{{ url_for('trip.trip_history') }}"
+            class="btn btn-outline-success btn-sm w-100"
+          >
+            <i class="fas fa-list"></i> Xem tất cả chuyến đi
+          </a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Wallet & Payments -->
+  {% if user.role != 'admin' %}
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-warning text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-credit-card"></i> Giao dịch gần đây
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if recent_payments %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Mã giao dịch</th>
+                  <th>Loại</th>
+                  <th>Số tiền</th>
+                  <th>Phương thức</th>
+                  <th>Trạng thái</th>
+                  <th>Thời gian</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for payment in recent_payments %}
+                <tr>
+                  <td><code>{{ payment.payment_code }}</code></td>
+                  <td>
+                    {% if payment.trip_id %}
+                    <span class="badge bg-info">
+                      <i class="fas fa-car"></i> Chuyến đi
+                    </span>
+                    {% else %}
+                    <span class="badge bg-success">
+                      <i class="fas fa-arrow-down"></i> Nạp tiền
+                    </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if payment.trip_id %}
+                    <span class="text-danger"
+                      >-{{ "{:,.0f}".format(payment.amount) }} ₫</span
+                    >
+                    {% else %}
+                    <span class="text-success"
+                      >+{{ "{:,.0f}".format(payment.amount) }} ₫</span
+                    >
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if payment.payment_method == 'wallet' %}
+                    <i class="fas fa-wallet"></i> Ví {% elif
+                    payment.payment_method == 'stripe' %}
+                    <i class="fab fa-cc-stripe"></i> Stripe {% elif
+                    payment.payment_method == 'momo' %}
+                    <i class="fas fa-mobile-alt"></i> MoMo {% else %}
+                    <i class="fas fa-credit-card"></i> {{ payment.payment_method
+                    }} {% endif %}
+                  </td>
+                  <td>
+                    {% if payment.payment_status == 'completed' %}
+                    <span class="badge bg-success">Thành công</span>
+                    {% elif payment.payment_status == 'pending' %}
+                    <span class="badge bg-warning">Đang xử lý</span>
+                    {% elif payment.payment_status == 'failed' %}
+                    <span class="badge bg-danger">Thất bại</span>
+                    {% else %}
+                    <span class="badge bg-secondary"
+                      >{{ payment.payment_status }}</span
+                    >
+                    {% endif %}
+                  </td>
+                  <td>
+                    <small
+                      >{{ payment.created_at.strftime('%d/%m/%Y %H:%M')
+                      }}</small
+                    >
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="fas fa-file-invoice-dollar fa-3x mb-3"></i>
+            <p>Chưa có giao dịch nào</p>
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-footer">
+          <div class="row">
+            <div class="col-6">
+              <a
+                href="{{ url_for('payment.wallet') }}"
+                class="btn btn-outline-warning btn-sm w-100"
+              >
+                <i class="fas fa-wallet"></i> Quản lý ví
+              </a>
+            </div>
+            <div class="col-6">
+              <a
+                href="{{ url_for('payment.topup') }}"
+                class="btn btn-warning btn-sm w-100"
+              >
+                <i class="fas fa-plus"></i> Nạp tiền
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Emergency Alerts (if any) -->
+  {% if user.emergency_alerts %}
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-exclamation-triangle"></i> Cảnh báo khẩn cấp
+          </h5>
+        </div>
+        <div class="card-body">
+          {% for alert in user.emergency_alerts[:5] %}
+          <div
+            class="alert alert-{% if alert.severity == 'critical' %}danger{% elif alert.severity == 'high' %}warning{% else %}info{% endif %}"
+            role="alert"
+          >
+            <div class="d-flex justify-content-between">
+              <div>
+                <strong>{{ alert.alert_code }}</strong> - {{ alert.alert_type }}
+                <br />
+                <small>{{ alert.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+              </div>
+              <span
+                class="badge bg-{% if alert.status == 'resolved' %}success{% elif alert.status == 'acknowledged' %}warning{% else %}danger{% endif %}"
+              >
+                {{ alert.status }}
+              </span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="card-footer">
+          <a
+            href="{{ url_for('emergency.my_alerts') }}"
+            class="btn btn-outline-danger btn-sm w-100"
+          >
+            <i class="fas fa-list"></i> Xem tất cả cảnh báo
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Add smooth animations
+  document.addEventListener("DOMContentLoaded", function () {
+    // Animate stat cards on load
+    const statCards = document.querySelectorAll(".stat-card");
+    statCards.forEach((card, index) => {
+      setTimeout(() => {
+        card.style.opacity = "0";
+        card.style.transform = "translateY(20px)";
+        card.style.transition = "all 0.5s ease";
+
+        setTimeout(() => {
+          card.style.opacity = "1";
+          card.style.transform = "translateY(0)";
+        }, 50);
+      }, index * 100);
+    });
+  });
+</script>
+{% endblock %}
