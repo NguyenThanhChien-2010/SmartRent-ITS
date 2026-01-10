@@ -1,0 +1,52 @@
+# Core Framework
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+WTForms==3.1.1
+
+# Database
+SQLAlchemy==2.0.23
+# psycopg2-binary==2.9.9  # Chỉ cần nếu dùng PostgreSQL production
+Flask-Migrate==4.0.5
+
+# Authentication & Security
+Flask-Bcrypt==1.0.1
+PyJWT==2.8.0
+python-dotenv==1.0.0
+
+# Payment Integration (MIỄN PHÍ - chỉ dùng wallet nội bộ)
+# Không cần stripe cho version miễn phí
+
+# GIS & Maps (MIỄN PHÍ)
+# folium==0.15.1  # Optional - không cần thiết với Mapbox
+geopy==2.4.1
+# geopandas==0.14.1  # Optional - nặng, chỉ cần nếu phân tích GIS phức tạp
+
+# IoT & MQTT (for vehicle connectivity)
+paho-mqtt==1.6.1
+
+# Data Analysis & Visualization (Optional - chỉ cần cho admin analytics)
+# pandas==2.1.4  # Cần Visual Studio build tools trên Windows
+# numpy==1.26.2  # Cần compiler
+# plotly==5.18.0  # Optional - Chart.js trong template đã đủ
+
+# API & Web Services
+requests==2.31.0
+Flask-CORS==4.0.0
+# Flask-RESTful==0.3.10  # Optional
+
+# Background Tasks (Optional - có thể bỏ cho demo)
+# Flask-APScheduler==1.13.1
+# celery==5.3.4
+
+# Image Processing (QR codes)
+qrcode==7.4.2
+Pillow>=10.0.0  # Use any available prebuilt wheel
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Firebase
+firebase-admin==6.5.0

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Trang chủ - SmartRent{% endblock %}
+
+{% block content %}
+<div class="hero-section bg-primary text-white py-5">
+    <div class="container text-center">
+        <h1 class="display-4 mb-4">Chào mừng đến SmartRent!</h1>
+        <p class="lead">Thuê xe nhanh chóng, tiện lợi và thông minh</p>
+        <a href="{{ url_for('vehicle.vehicle_map') }}" class="btn btn-light btn-lg mt-3">
+            <i class="fas fa-map-marked-alt"></i> Tìm xe ngay
+        </a>
+    </div>
+</div>
+
+<div class="container my-5">
+    <!-- Quick Stats -->
+    <div class="row mb-5">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-bicycle fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Xe đạp điện</h5>
+                    <p class="text-muted">500 VND/phút</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-motorcycle fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Xe máy</h5>
+                    <p class="text-muted">2,000 VND/phút</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-car fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">Ô tô</h5>
+                    <p class="text-muted">5,000 VND/phút</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">24/7</h5>
+                    <p class="text-muted">Luôn sẵn sàng</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <h2 class="text-center mb-4">Tính năng nổi bật</h2>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-map-marked-alt text-primary"></i> Tìm xe gần bạn</h5>
+                    <p class="card-text">Hiển thị xe trên bản đồ thời gian thực, tìm xe gần nhất chỉ trong vài giây.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-qrcode text-success"></i> Quét QR mở khóa</h5>
+                    <p class="card-text">Mở khóa xe nhanh chóng bằng mã QR, không cần chìa khóa vật lý.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-wallet text-info"></i> Thanh toán linh hoạt</h5>
+                    <p class="card-text">Ví điện tử, thẻ tín dụng, nhiều hình thức thanh toán tiện lợi.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-route text-warning"></i> Lập kế hoạch hành trình</h5>
+                    <p class="card-text">Gợi ý lộ trình tối ưu, tránh tắc đường và khu vực hạn chế.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-battery-full text-success"></i> Giám sát xe IoT</h5>
+                    <p class="card-text">Theo dõi pin, nhiên liệu, tình trạng kỹ thuật realtime.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-exclamation-triangle text-danger"></i> Hỗ trợ khẩn cấp</h5>
+                    <p class="card-text">Nút SOS trên xe, nhận hỗ trợ ngay khi gặp sự cố.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity (if logged in) -->
+    {% if current_user.is_authenticated %}
+    <div class="row mt-5">
+        <div class="col-md-12">
+            <h3>Hoạt động gần đây</h3>
+            <div class="card">
+                <div class="card-body">
+                    <p>Bạn có <strong>{{ current_user.trips.filter_by(status='completed').count() }}</strong> chuyến đi đã hoàn thành.</p>
+                    <a href="{{ url_for('trip.trip_history') }}" class="btn btn-primary">Xem lịch sử</a>
+                    <a href="{{ url_for('vehicle.vehicle_map') }}" class="btn btn-success">Thuê xe mới</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Quản trị - SmartRent{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <h2><i class="fas fa-chart-line"></i> Dashboard Quản trị</h2>
+    <hr>
+    
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6>Tổng người dùng</h6>
+                    <h3>{{ stats.total_users }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6>Xe khả dụng</h6>
+                    <h3>{{ stats.available_vehicles }}/{{ stats.total_vehicles }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6>Chuyến đi hôm nay</h6>
+                    <h3>{{ stats.today_trips }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6>Doanh thu hôm nay</h6>
+                    <h3>{{ "{:,.0f}".format(stats.today_revenue) }} VND</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alert Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h6><i class="fas fa-car"></i> Xe đang sử dụng</h6>
+                    <h4>{{ stats.in_use_vehicles }}</h4>
+                    <small class="text-muted">{{ stats.active_trips }} chuyến đi đang diễn ra</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <h6><i class="fas fa-wrench"></i> Xe cần bảo trì</h6>
+                    <h4>{{ stats.maintenance_vehicles }}</h4>
+                    <small class="text-muted">{{ stats.pending_maintenances }} lịch chờ xử lý</small>
+                    <a href="{{ url_for('admin.manage_maintenance') }}" class="btn btn-sm btn-warning mt-2">Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Cảnh báo khẩn cấp</h6>
+                    <h4>{{ stats.open_alerts }}</h4>
+                    <small class="text-muted">Cần xử lý ngay</small>
+                    <a href="{{ url_for('admin.emergency_alerts') }}" class="btn btn-sm btn-danger mt-2">Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Doanh thu 7 ngày qua</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Sử dụng theo loại xe</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="vehicleTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Giờ cao điểm</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="peakHoursChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Revenue Chart
+const revenueData = {{ revenue_data | tojson }};
+new Chart(document.getElementById('revenueChart'), {
+    type: 'line',
+    data: {
+        labels: revenueData.map(d => d.date),
+        datasets: [{
+            label: 'Doanh thu (VND)',
+            data: revenueData.map(d => d.revenue),
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
+        }]
+    }
+});
+
+// Vehicle Type Chart
+const vehicleUsageData = {{ vehicle_usage_data | tojson }};
+new Chart(document.getElementById('vehicleTypeChart'), {
+    type: 'pie',
+    data: {
+        labels: vehicleUsageData.map(d => d.type),
+        datasets: [{
+            data: vehicleUsageData.map(d => d.count),
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+        }]
+    }
+});
+
+// Peak Hours Chart
+const peakHoursData = {{ peak_hours_data | tojson }};
+new Chart(document.getElementById('peakHoursChart'), {
+    type: 'bar',
+    data: {
+        labels: peakHoursData.map(d => d.hour + ':00'),
+        datasets: [{
+            label: 'Số chuyến đi',
+            data: peakHoursData.map(d => d.count),
+            backgroundColor: 'rgba(54, 162, 235, 0.5)'
+        }]
+    }
+});
+</script>
+{% endblock %}

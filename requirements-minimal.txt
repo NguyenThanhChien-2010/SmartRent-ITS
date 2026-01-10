@@ -1,0 +1,38 @@
+# Minimal requirements cho demo/development với SQLite + Firebase
+# Bỏ các package nặng không cần thiết
+
+# Core Framework
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+WTForms==3.1.1
+
+# Database - SQLite built-in
+SQLAlchemy==2.0.23
+Flask-Migrate==4.0.5
+
+# Authentication & Security
+Flask-Bcrypt==1.0.1
+PyJWT==2.8.0
+python-dotenv==1.0.0
+
+# GIS & Maps
+geopy==2.4.1
+
+# IoT & MQTT
+paho-mqtt==1.6.1
+
+# API & Web Services
+requests==2.31.0
+Flask-CORS==4.0.0
+
+# Image Processing (QR codes)
+qrcode==7.4.2
+Pillow==10.1.0
+
+# Utilities
+python-dateutil==2.8.2
+
+# Firebase
+firebase-admin==6.5.0
