@@ -1,0 +1,192 @@
+{% extends "base.html" %} {% block title %}Chỉnh sửa thông tin - SmartRent{%
+endblock %} {% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h4><i class="fas fa-edit"></i> Chỉnh sửa thông tin cá nhân</h4>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('auth.edit_profile') }}">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="username" class="form-label">Tên đăng nhập</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="username"
+                  value="{{ user.username }}"
+                  disabled
+                />
+                <small class="text-muted"
+                  >Không thể thay đổi tên đăng nhập</small
+                >
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="email"
+                  value="{{ user.email }}"
+                  disabled
+                />
+                <small class="text-muted">Không thể thay đổi email</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="full_name" class="form-label"
+                >Họ và tên <span class="text-danger">*</span></label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="full_name"
+                name="full_name"
+                value="{{ user.full_name or '' }}"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="phone" class="form-label">Số điện thoại</label>
+              <input
+                type="tel"
+                class="form-control"
+                id="phone"
+                name="phone"
+                value="{{ user.phone or '' }}"
+                placeholder="0123456789"
+              />
+              <small class="text-muted">Định dạng: 10 số, bắt đầu bằng 0</small>
+            </div>
+
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> Một số thông tin như tên đăng
+              nhập và email không thể thay đổi để đảm bảo tính bảo mật.
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <a href="{{ url_for('auth.profile') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Quay lại
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Lưu thay đổi
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Additional Settings -->
+      <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0"><i class="fas fa-cog"></i> Cài đặt khác</h5>
+        </div>
+        <div class="card-body">
+          <div class="list-group list-group-flush">
+            <a
+              href="{{ url_for('auth.change_password') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-key text-warning"></i> Đổi mật khẩu
+            </a>
+            <a
+              href="#"
+              class="list-group-item list-group-item-action"
+              data-bs-toggle="modal"
+              data-bs-target="#verifyModal"
+            >
+              <i class="fas fa-shield-alt text-success"></i>
+              {% if user.is_verified %} Đã xác thực tài khoản {% else %} Xác
+              thực tài khoản {% endif %}
+            </a>
+            <a
+              href="{{ url_for('emergency.my_alerts') }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-exclamation-triangle text-danger"></i> Quản lý
+              cảnh báo
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Verify Modal -->
+<div class="modal fade" id="verifyModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-shield-alt"></i> Xác thực tài khoản
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        {% if user.is_verified %}
+        <div class="alert alert-success">
+          <i class="fas fa-check-circle"></i> Tài khoản của bạn đã được xác
+          thực!
+        </div>
+        {% else %}
+        <p>Xác thực tài khoản giúp bạn:</p>
+        <ul>
+          <li>Tăng giới hạn thuê xe</li>
+          <li>Truy cập các tính năng đặc biệt</li>
+          <li>Được ưu tiên hỗ trợ</li>
+        </ul>
+        <p>Vui lòng liên hệ bộ phận hỗ trợ để hoàn tất xác thực.</p>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Đóng
+        </button>
+        {% if not user.is_verified %}
+        <a href="{{ url_for('main.contact') }}" class="btn btn-primary">
+          <i class="fas fa-phone"></i> Liên hệ hỗ trợ
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Phone number validation
+  document.getElementById("phone").addEventListener("input", function (e) {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+    e.target.value = value;
+  });
+
+  // Form validation
+  document.querySelector("form").addEventListener("submit", function (e) {
+    const fullName = document.getElementById("full_name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+
+    if (!fullName) {
+      e.preventDefault();
+      alert("Vui lòng nhập họ và tên");
+      return;
+    }
+
+    if (phone && (phone.length !== 10 || !phone.startsWith("0"))) {
+      e.preventDefault();
+      alert("Số điện thoại phải có 10 số và bắt đầu bằng 0");
+      return;
+    }
+  });
+</script>
+{% endblock %}
