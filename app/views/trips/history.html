@@ -1,0 +1,226 @@
+{% extends "base.html" %} {% block title %}Lịch sử chuyến đi - SmartRent{%
+endblock %} {% block content %}
+<div class="container mt-4">
+  <h2><i class="fas fa-history"></i> Lịch sử chuyến đi</h2>
+  <hr />
+
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-route fa-2x text-primary mb-2"></i>
+          <h5 class="card-title">Tổng chuyến đi</h5>
+          <h3 class="text-primary">{{ stats.total_trips }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-road fa-2x text-success mb-2"></i>
+          <h5 class="card-title">Tổng quãng đường</h5>
+          <h3 class="text-success">{{ stats.total_distance }} km</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-money-bill-wave fa-2x text-warning mb-2"></i>
+          <h5 class="card-title">Tổng chi tiêu</h5>
+          <h3 class="text-warning">
+            {{ "{:,.0f}".format(stats.total_spent) }} VND
+          </h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trip History List -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-list"></i> Danh sách chuyến đi</h5>
+    </div>
+    <div class="card-body">
+      {% if trips.items %}
+      <div class="list-group">
+        {% for trip in trips.items %}
+        <div class="list-group-item">
+          <div class="row align-items-center">
+            <div class="col-md-2">
+              <div class="text-center">
+                {% if trip.vehicle %} {% if trip.vehicle.vehicle_type == 'car'
+                %}
+                <i class="fas fa-car fa-3x text-primary"></i>
+                {% elif trip.vehicle.vehicle_type == 'motorbike' %}
+                <i class="fas fa-motorcycle fa-3x text-danger"></i>
+                {% elif trip.vehicle.vehicle_type == 'bicycle' %}
+                <i class="fas fa-bicycle fa-3x text-success"></i>
+                {% else %}
+                <i class="fas fa-car fa-3x text-secondary"></i>
+                {% endif %}
+                <p class="mb-0 mt-2">
+                  <small><strong>{{ trip.vehicle.vehicle_code }}</strong></small
+                  ><br />
+                  <small class="text-muted"
+                    >{{ trip.vehicle.brand }} {{ trip.vehicle.model }}</small
+                  >
+                </p>
+                {% else %}
+                <i class="fas fa-question-circle fa-3x text-muted"></i>
+                <p class="mb-0 mt-2"><small>N/A</small></p>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-3">
+              <h6 class="mb-1"><i class="fas fa-calendar"></i> Thời gian</h6>
+              <p class="mb-0">
+                <small
+                  ><strong>Bắt đầu:</strong> {{
+                  trip.start_time.strftime('%d/%m/%Y %H:%M') if trip.start_time
+                  else 'N/A' }}</small
+                ><br />
+                <small
+                  ><strong>Kết thúc:</strong> {{
+                  trip.end_time.strftime('%d/%m/%Y %H:%M') if trip.end_time else
+                  'Đang di chuyển' }}</small
+                >
+              </p>
+            </div>
+            <div class="col-md-2 text-center">
+              <h6 class="mb-1"><i class="fas fa-road"></i> Quãng đường</h6>
+              <h5 class="text-success mb-0">
+                {{ trip.distance_km|round(2) if trip.distance_km else '0' }} km
+              </h5>
+            </div>
+            <div class="col-md-2 text-center">
+              <h6 class="mb-1">
+                <i class="fas fa-money-bill-wave"></i> Chi phí
+              </h6>
+              <h5 class="text-warning mb-0">
+                {{ "{:,.0f}".format(trip.total_cost) if trip.total_cost else '0'
+                }} VND
+              </h5>
+            </div>
+            <div class="col-md-2 text-center">
+              <h6 class="mb-1">
+                <i class="fas fa-info-circle"></i> Trạng thái
+              </h6>
+              {% if trip.status == 'completed' %}
+              <span class="badge bg-success">Hoàn thành</span>
+              {% elif trip.status == 'in_progress' %}
+              <span class="badge bg-primary">Đang di chuyển</span>
+              {% elif trip.status == 'cancelled' %}
+              <span class="badge bg-danger">Đã hủy</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ trip.status }}</span>
+              {% endif %}
+            </div>
+            <div class="col-md-1 text-center">
+              <a
+                href="{{ url_for('trip.trip_detail', trip_id=trip.id) }}"
+                class="btn btn-sm btn-outline-primary"
+                title="Xem chi tiết"
+              >
+                <i class="fas fa-eye"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Route Information -->
+          {% if trip.start_location or trip.end_location %}
+          <div class="row mt-3">
+            <div class="col-md-12">
+              <small>
+                <i class="fas fa-map-marker-alt text-success"></i>
+                <strong>Điểm đi:</strong> {{ trip.start_location or 'N/A' }}
+                &nbsp;&nbsp;&nbsp;
+                <i class="fas fa-map-marker-alt text-danger"></i>
+                <strong>Điểm đến:</strong> {{ trip.end_location or 'Chưa kết
+                thúc' }}
+              </small>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Rating -->
+          {% if trip.rating %}
+          <div class="row mt-2">
+            <div class="col-md-12">
+              <small>
+                <i class="fas fa-star text-warning"></i>
+                <strong>Đánh giá:</strong>
+                {% for i in range(trip.rating) %}
+                <i class="fas fa-star text-warning"></i>
+                {% endfor %} {% for i in range(5 - trip.rating) %}
+                <i class="far fa-star text-warning"></i>
+                {% endfor %} {% if trip.feedback %} -
+                <em>"{{ trip.feedback }}"</em>
+                {% endif %}
+              </small>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if trips.pages > 1 %}
+      <nav aria-label="Trip history pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+          <li class="page-item {% if not trips.has_prev %}disabled{% endif %}">
+            <a
+              class="page-link"
+              href="{{ url_for('trip.trip_history', page=trips.prev_num) if trips.has_prev else '#' }}"
+            >
+              <i class="fas fa-chevron-left"></i> Trước
+            </a>
+          </li>
+
+          {% for page_num in range(1, trips.pages + 1) %} {% if page_num <= 3 or
+          page_num > trips.pages - 3 or (page_num >= trips.page - 1 and page_num
+          <= trips.page + 1) %}
+          <li
+            class="page-item {% if page_num == trips.page %}active{% endif %}"
+          >
+            <a
+              class="page-link"
+              href="{{ url_for('trip.trip_history', page=page_num) }}"
+            >
+              {{ page_num }}
+            </a>
+          </li>
+          {% elif page_num == 4 or page_num == trips.pages - 3 %}
+          <li class="page-item disabled">
+            <span class="page-link">...</span>
+          </li>
+          {% endif %} {% endfor %}
+
+          <li class="page-item {% if not trips.has_next %}disabled{% endif %}">
+            <a
+              class="page-link"
+              href="{{ url_for('trip.trip_history', page=trips.next_num) if trips.has_next else '#' }}"
+            >
+              Sau <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      {% endif %} {% else %}
+      <div class="text-center py-5">
+        <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+        <h4 class="text-muted">Chưa có chuyến đi nào</h4>
+        <p class="text-muted">
+          Bắt đầu thuê xe để xem lịch sử chuyến đi của bạn
+        </p>
+        <a href="{{ url_for('vehicle.vehicle_map') }}" class="btn btn-primary">
+          <i class="fas fa-map-marked-alt"></i> Tìm xe ngay
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
