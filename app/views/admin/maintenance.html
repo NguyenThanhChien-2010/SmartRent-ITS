@@ -1,0 +1,204 @@
+{% extends "base.html" %} {% block title %}Quản lý Bảo trì - SmartRent{%
+endblock %} {% block content %}
+<div class="container-fluid mt-3">
+  <h2><i class="fas fa-tools"></i> Quản lý Bảo trì</h2>
+  <hr />
+
+  <!-- Filter Section -->
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <div class="btn-group" role="group">
+        <a
+          href="{{ url_for('admin.manage_maintenance', status='all') }}"
+          class="btn btn-outline-primary {% if status == 'all' %}active{% endif %}"
+        >
+          Tất cả
+        </a>
+        <a
+          href="{{ url_for('admin.manage_maintenance', status='scheduled') }}"
+          class="btn btn-outline-warning {% if status == 'scheduled' %}active{% endif %}"
+        >
+          Đã lên lịch
+        </a>
+        <a
+          href="{{ url_for('admin.manage_maintenance', status='in_progress') }}"
+          class="btn btn-outline-info {% if status == 'in_progress' %}active{% endif %}"
+        >
+          Đang bảo trì
+        </a>
+        <a
+          href="{{ url_for('admin.manage_maintenance', status='completed') }}"
+          class="btn btn-outline-success {% if status == 'completed' %}active{% endif %}"
+        >
+          Hoàn thành
+        </a>
+      </div>
+    </div>
+    <div class="col-md-6 text-end">
+      {# TODO: Implement add_maintenance endpoint #} {#
+      <a href="{{ url_for('admin.add_maintenance') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Thêm lịch bảo trì
+      </a>
+      #}
+    </div>
+  </div>
+
+  <!-- Maintenance Table -->
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Phương tiện</th>
+              <th>Loại bảo trì</th>
+              <th>Ngày lên lịch</th>
+              <th>Người thực hiện</th>
+              <th>Chi phí</th>
+              <th>Trạng thái</th>
+              <th>Ghi chú</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if maintenances.items %} {% for maintenance in maintenances.items
+            %}
+            <tr>
+              <td>{{ maintenance.id }}</td>
+              <td>
+                <strong>{{ maintenance.vehicle.vehicle_code }}</strong><br />
+                <small class="text-muted"
+                  >{{ maintenance.vehicle.brand }} {{ maintenance.vehicle.model
+                  }}</small
+                ><br />
+                <small class="text-muted"
+                  >{{ maintenance.vehicle.license_plate }}</small
+                >
+              </td>
+              <td>
+                <span class="badge bg-secondary"
+                  >{{ maintenance.maintenance_type }}</span
+                >
+              </td>
+              <td>
+                {{ maintenance.scheduled_date.strftime('%d/%m/%Y %H:%M') if
+                maintenance.scheduled_date else 'N/A' }}
+              </td>
+              <td>{{ maintenance.performed_by or 'Chưa phân công' }}</td>
+              <td>
+                {% if maintenance.cost %} {{ "{:,.0f}".format(maintenance.cost)
+                }} VND {% else %}
+                <span class="text-muted">Chưa có</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if maintenance.status == 'scheduled' %}
+                <span class="badge bg-warning">Đã lên lịch</span>
+                {% elif maintenance.status == 'in_progress' %}
+                <span class="badge bg-info">Đang bảo trì</span>
+                {% elif maintenance.status == 'completed' %}
+                <span class="badge bg-success">Hoàn thành</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ maintenance.status }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <small
+                  >{{ maintenance.notes[:50] if maintenance.notes else '-' }}{%
+                  if maintenance.notes and maintenance.notes|length > 50 %}...{%
+                  endif %}</small
+                >
+              </td>
+              <td>
+                <div class="btn-group" role="group">
+                  {# TODO: Implement view_maintenance and edit_maintenance
+                  endpoints #} {#
+                  <a
+                    href="{{ url_for('admin.view_maintenance', maintenance_id=maintenance.id) }}"
+                    class="btn btn-sm btn-info"
+                    title="Xem chi tiết"
+                  >
+                    <i class="fas fa-eye"></i>
+                  </a>
+                  <a
+                    href="{{ url_for('admin.edit_maintenance', maintenance_id=maintenance.id) }}"
+                    class="btn btn-sm btn-warning"
+                    title="Chỉnh sửa"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </a>
+                  #}
+                  <span class="text-muted">-</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %} {% else %}
+            <tr>
+              <td colspan="9" class="text-center text-muted">
+                <i class="fas fa-inbox"></i> Không có lịch bảo trì nào
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      {% if maintenances.pages > 1 %}
+      <nav aria-label="Maintenance pagination">
+        <ul class="pagination justify-content-center">
+          <li
+            class="page-item {% if not maintenances.has_prev %}disabled{% endif %}"
+          >
+            <a
+              class="page-link"
+              href="{{ url_for('admin.manage_maintenance', page=maintenances.prev_num, status=status) if maintenances.has_prev else '#' }}"
+            >
+              Trước
+            </a>
+          </li>
+
+          {% for page_num in range(1, maintenances.pages + 1) %} {% if page_num
+          <= 3 or page_num > maintenances.pages - 3 or (page_num >=
+          maintenances.page - 1 and page_num <= maintenances.page + 1) %}
+          <li
+            class="page-item {% if page_num == maintenances.page %}active{% endif %}"
+          >
+            <a
+              class="page-link"
+              href="{{ url_for('admin.manage_maintenance', page=page_num, status=status) }}"
+            >
+              {{ page_num }}
+            </a>
+          </li>
+          {% elif page_num == 4 or page_num == maintenances.pages - 3 %}
+          <li class="page-item disabled">
+            <span class="page-link">...</span>
+          </li>
+          {% endif %} {% endfor %}
+
+          <li
+            class="page-item {% if not maintenances.has_next %}disabled{% endif %}"
+          >
+            <a
+              class="page-link"
+              href="{{ url_for('admin.manage_maintenance', page=maintenances.next_num, status=status) if maintenances.has_next else '#' }}"
+            >
+              Sau
+            </a>
+          </li>
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Auto-refresh every 30 seconds for real-time updates
+  setTimeout(function () {
+    location.reload();
+  }, 30000);
+</script>
+{% endblock %}

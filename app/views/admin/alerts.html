@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Cảnh báo Khẩn cấp - SmartRent{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <h2><i class="fas fa-exclamation-triangle"></i> Quản lý Cảnh báo Khẩn cấp (eCall)</h2>
+    <hr>
+    
+    <!-- Filter Section -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('admin.emergency_alerts', status='all') }}" 
+                   class="btn btn-outline-primary {% if status == 'all' %}active{% endif %}">
+                    Tất cả
+                </a>
+                <a href="{{ url_for('admin.emergency_alerts', status='open') }}" 
+                   class="btn btn-outline-danger {% if status == 'open' %}active{% endif %}">
+                    <i class="fas fa-bell"></i> Đang mở
+                </a>
+                <a href="{{ url_for('admin.emergency_alerts', status='in_progress') }}" 
+                   class="btn btn-outline-warning {% if status == 'in_progress' %}active{% endif %}">
+                    <i class="fas fa-spinner"></i> Đang xử lý
+                </a>
+                <a href="{{ url_for('admin.emergency_alerts', status='resolved') }}" 
+                   class="btn btn-outline-success {% if status == 'resolved' %}active{% endif %}">
+                    <i class="fas fa-check"></i> Đã giải quyết
+                </a>
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <span class="badge bg-danger fs-6">
+                <i class="fas fa-exclamation-circle"></i> 
+                Cảnh báo khẩn cấp yêu cầu xử lý nhanh
+            </span>
+        </div>
+    </div>
+    
+    <!-- Emergency Alerts Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Người dùng</th>
+                            <th>Phương tiện</th>
+                            <th>Loại cảnh báo</th>
+                            <th>Vị trí</th>
+                            <th>Thời gian</th>
+                            <th>Trạng thái</th>
+                            <th>Mô tả</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if alerts.items %}
+                            {% for alert in alerts.items %}
+                            <tr class="{% if alert.status == 'open' %}table-danger{% elif alert.status == 'in_progress' %}table-warning{% endif %}">
+                                <td><strong>#{{ alert.id }}</strong></td>
+                                <td>
+                                    <strong>{{ alert.user.full_name }}</strong><br>
+                                    <small class="text-muted">{{ alert.user.email }}</small><br>
+                                    <small class="text-muted">{{ alert.user.phone }}</small>
+                                </td>
+                                <td>
+                                    {% if alert.trip and alert.trip.vehicle %}
+                                        <strong>{{ alert.trip.vehicle.vehicle_code }}</strong><br>
+                                        <small class="text-muted">{{ alert.trip.vehicle.brand }} {{ alert.trip.vehicle.model }}</small><br>
+                                        <small class="text-muted">{{ alert.trip.vehicle.license_plate }}</small>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if alert.alert_type == 'accident' %}
+                                        <span class="badge bg-danger"><i class="fas fa-car-crash"></i> Tai nạn</span>
+                                    {% elif alert.alert_type == 'medical' %}
+                                        <span class="badge bg-warning"><i class="fas fa-ambulance"></i> Y tế</span>
+                                    {% elif alert.alert_type == 'theft' %}
+                                        <span class="badge bg-dark"><i class="fas fa-user-secret"></i> Trộm cắp</span>
+                                    {% elif alert.alert_type == 'breakdown' %}
+                                        <span class="badge bg-info"><i class="fas fa-wrench"></i> Hỏng hóc</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ alert.alert_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if alert.latitude and alert.longitude %}
+                                        <a href="https://www.google.com/maps?q={{ alert.latitude }},{{ alert.longitude }}" 
+                                           target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-map-marker-alt"></i> Xem bản đồ
+                                        </a><br>
+                                        <small class="text-muted">{{ "%.6f"|format(alert.latitude) }}, {{ "%.6f"|format(alert.longitude) }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Không có</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ alert.created_at.strftime('%d/%m/%Y') }}<br>
+                                    <small class="text-muted">{{ alert.created_at.strftime('%H:%M:%S') }}</small>
+                                </td>
+                                <td>
+                                    {% if alert.status == 'open' %}
+                                        <span class="badge bg-danger"><i class="fas fa-exclamation-circle"></i> Đang mở</span>
+                                    {% elif alert.status == 'in_progress' %}
+                                        <span class="badge bg-warning"><i class="fas fa-spinner"></i> Đang xử lý</span>
+                                    {% elif alert.status == 'resolved' %}
+                                        <span class="badge bg-success"><i class="fas fa-check-circle"></i> Đã giải quyết</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ alert.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ alert.description[:50] if alert.description else '-' }}{% if alert.description and alert.description|length > 50 %}...{% endif %}</small>
+                                    {% if alert.response %}
+                                        <br><strong class="text-success">Phản hồi:</strong>
+                                        <small>{{ alert.response[:40] }}{% if alert.response|length > 40 %}...{% endif %}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical" role="group">
+                                        {% if alert.status != 'resolved' %}
+                                            <button type="button" class="btn btn-sm btn-warning" 
+                                                    data-alert-id="{{ alert.id }}"
+                                                    onclick="updateAlertStatus(this.dataset.alertId, 'in_progress')"
+                                                    {% if alert.status == 'in_progress' %}disabled{% endif %}>
+                                                <i class="fas fa-spinner"></i> Đang xử lý
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-success" 
+                                                    data-alert-id="{{ alert.id }}"
+                                                    onclick="resolveAlert(this.dataset.alertId)">
+                                                <i class="fas fa-check"></i> Giải quyết
+                                            </button>
+                                        {% else %}
+                                            <span class="text-success"><i class="fas fa-check-circle"></i> Đã xong</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">
+                                    <i class="fas fa-inbox"></i> Không có cảnh báo nào
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if alerts.pages > 1 %}
+            <nav aria-label="Alerts pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if not alerts.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('admin.emergency_alerts', page=alerts.prev_num, status=status) if alerts.has_prev else '#' }}">
+                            Trước
+                        </a>
+                    </li>
+                    
+                    {% for page_num in range(1, alerts.pages + 1) %}
+                        {% if page_num <= 3 or page_num > alerts.pages - 3 or (page_num >= alerts.page - 1 and page_num <= alerts.page + 1) %}
+                            <li class="page-item {% if page_num == alerts.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('admin.emergency_alerts', page=page_num, status=status) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% elif page_num == 4 or page_num == alerts.pages - 3 %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <li class="page-item {% if not alerts.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('admin.emergency_alerts', page=alerts.next_num, status=status) if alerts.has_next else '#' }}">
+                            Sau
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal for resolving alert -->
+<div class="modal fade" id="resolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-check-circle"></i> Giải quyết cảnh báo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="responseText" class="form-label">Phản hồi / Ghi chú:</label>
+                    <textarea class="form-control" id="responseText" rows="4" 
+                              placeholder="Nhập thông tin về cách xử lý cảnh báo..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success" onclick="submitResolve()">
+                    <i class="fas fa-check"></i> Xác nhận giải quyết
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentAlertId = null;
+const resolveModal = new bootstrap.Modal(document.getElementById('resolveModal'));
+
+function updateAlertStatus(alertId, status) {
+    if (!confirm('Xác nhận cập nhật trạng thái cảnh báo?')) return;
+    
+    fetch(`/admin/alerts/${alertId}/respond`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            alert('Đã cập nhật trạng thái!');
+            location.reload();
+        } else {
+            alert('Lỗi: ' + (data.error || 'Không thể cập nhật'));
+        }
+    })
+    .catch(error => {
+        alert('Lỗi kết nối: ' + error);
+    });
+}
+
+function resolveAlert(alertId) {
+    currentAlertId = alertId;
+    resolveModal.show();
+}
+
+function submitResolve() {
+    const response = document.getElementById('responseText').value;
+    
+    if (!response.trim()) {
+        alert('Vui lòng nhập phản hồi trước khi giải quyết!');
+        return;
+    }
+    
+    fetch(`/admin/alerts/${currentAlertId}/respond`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            status: 'resolved',
+            response: response
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            alert('Đã giải quyết cảnh báo!');
+            resolveModal.hide();
+            location.reload();
+        } else {
+            alert('Lỗi: ' + (data.error || 'Không thể cập nhật'));
+        }
+    })
+    .catch(error => {
+        alert('Lỗi kết nối: ' + error);
+    });
+}
+
+// Auto-refresh every 30 seconds for real-time updates
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}
