@@ -141,7 +141,22 @@ def logout():
 @login_required
 def profile():
     """Trang thông tin cá nhân"""
-    return render_template('auth/profile.html', user=current_user)
+    from app.models import Trip, Payment
+    
+    # Get recent trips (sorted by created_at descending)
+    recent_trips = Trip.query.filter_by(user_id=current_user.id)\
+        .order_by(Trip.created_at.desc())\
+        .limit(5).all()
+    
+    # Get recent payments (sorted by created_at descending)
+    recent_payments = Payment.query.filter_by(user_id=current_user.id)\
+        .order_by(Payment.created_at.desc())\
+        .limit(10).all()
+    
+    return render_template('auth/profile.html', 
+                         user=current_user,
+                         recent_trips=recent_trips,
+                         recent_payments=recent_payments)
 
 
 @auth_bp.route('/profile/edit', methods=['GET', 'POST'])
