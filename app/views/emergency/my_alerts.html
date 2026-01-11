@@ -1,0 +1,518 @@
+{% extends "base.html" %} {% block title %} {% if is_admin %}Quản lý cảnh báo
+khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent {% endblock
+%} {% block content %}
+<div class="container mt-4">
+  <h2>
+    <i class="fas fa-exclamation-triangle"></i>
+    {% if is_admin %} Quản lý cảnh báo khẩn cấp
+    <span class="badge bg-danger">ADMIN</span>
+    {% else %} Cảnh báo khẩn cấp của tôi {% endif %}
+  </h2>
+  <hr />
+
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-bell fa-2x text-warning mb-2"></i>
+          <h5 class="card-title">Tổng cảnh báo</h5>
+          <h3 class="text-warning">{{ alerts|length }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-exclamation-circle fa-2x text-danger mb-2"></i>
+          <h5 class="card-title">Đang mở</h5>
+          <h3 class="text-danger">
+            {{ alerts|selectattr('status', 'equalto', 'open')|list|length }}
+          </h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+          <h5 class="card-title">Đã giải quyết</h5>
+          <h3 class="text-success">
+            {{ alerts|selectattr('status', 'equalto', 'resolved')|list|length }}
+          </h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-lock fa-2x text-secondary mb-2"></i>
+          <h5 class="card-title">Đã đóng</h5>
+          <h3 class="text-secondary">
+            {{ alerts|selectattr('status', 'equalto', 'closed')|list|length }}
+          </h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency Report Button -->
+  <div class="mb-4">
+    <button
+      class="btn btn-danger btn-lg"
+      data-bs-toggle="modal"
+      data-bs-target="#reportModal"
+    >
+      <i class="fas fa-exclamation-triangle"></i> Báo cáo khẩn cấp mới
+    </button>
+  </div>
+
+  <!-- Alerts List -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-list"></i> Danh sách cảnh báo</h5>
+    </div>
+    <div class="card-body">
+      {% if alerts %}
+      <div class="list-group">
+        {% for alert in alerts %}
+        <div class="list-group-item">
+          <div class="row align-items-center">
+            <div class="col-md-1 text-center">
+              {% if alert.severity == 'critical' %}
+              <i class="fas fa-exclamation-circle fa-3x text-danger"></i>
+              {% elif alert.severity == 'high' %}
+              <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+              {% elif alert.severity == 'medium' %}
+              <i class="fas fa-info-circle fa-3x text-info"></i>
+              {% else %}
+              <i class="fas fa-check-circle fa-3x text-success"></i>
+              {% endif %}
+            </div>
+            <div class="col-md-2">
+              <h6 class="mb-1">
+                <strong>{{ alert.alert_code }}</strong>
+              </h6>
+              <p class="mb-0">
+                <span
+                  class="badge {% if alert.severity == 'critical' %}bg-danger {% elif alert.severity == 'high' %}bg-warning {% elif alert.severity == 'medium' %}bg-info {% else %}bg-secondary{% endif %}"
+                >
+                  {{ alert.severity|upper }}
+                </span>
+              </p>
+            </div>
+            <div class="col-md-2">
+              <h6 class="mb-1"><i class="fas fa-tag"></i> Loại</h6>
+              <p class="mb-0">
+                {% if alert.alert_type == 'accident' %}
+                <span class="badge bg-danger"
+                  ><i class="fas fa-car-crash"></i> Tai nạn</span
+                >
+                {% elif alert.alert_type == 'breakdown' %}
+                <span class="badge bg-warning"
+                  ><i class="fas fa-wrench"></i> Hỏng hóc</span
+                >
+                {% elif alert.alert_type == 'theft' %}
+                <span class="badge bg-dark"
+                  ><i class="fas fa-user-secret"></i> Mất cắp</span
+                >
+                {% elif alert.alert_type == 'medical' %}
+                <span class="badge bg-danger"
+                  ><i class="fas fa-ambulance"></i> Y tế</span
+                >
+                {% elif alert.alert_type == 'emergency' %}
+                <span class="badge bg-danger"
+                  ><i class="fas fa-exclamation"></i> SOS</span
+                >
+                {% else %}
+                <span class="badge bg-secondary">{{ alert.alert_type }}</span>
+                {% endif %}
+              </p>
+            </div>
+            <div class="col-md-3">
+              <h6 class="mb-1"><i class="fas fa-info-circle"></i> Mô tả</h6>
+              <p class="mb-0 text-muted">
+                <small>{{ alert.description or 'Không có mô tả' }}</small>
+              </p>
+            </div>
+            <div class="col-md-2">
+              <h6 class="mb-1"><i class="fas fa-calendar"></i> Thời gian</h6>
+              <p class="mb-0">
+                <small>{{ alert.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+              </p>
+            </div>
+            <div class="col-md-2">
+              <h6 class="mb-1"><i class="fas fa-flag"></i> Trạng thái</h6>
+              <p class="mb-0">
+                {% if alert.status == 'open' %}
+                <span class="badge bg-danger">Đang mở</span>
+                {% elif alert.status == 'acknowledged' %}
+                <span class="badge bg-warning">Đã tiếp nhận</span>
+                {% elif alert.status == 'resolved' %}
+                <span class="badge bg-success">Đã giải quyết</span>
+                {% elif alert.status == 'closed' %}
+                <span class="badge bg-secondary">Đã đóng</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ alert.status }}</span>
+                {% endif %}
+              </p>
+              {% if is_admin %}
+              <button
+                class="btn btn-sm btn-primary mt-2"
+                onclick="updateAlertStatus({{ alert.id }}, '{{ alert.alert_code }}', '{{ alert.status }}')"
+              >
+                <i class="fas fa-edit"></i> Cập nhật
+              </button>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Show user info for admin -->
+          {% if is_admin and alert.user %}
+          <div class="mt-2">
+            <small class="text-muted">
+              <i class="fas fa-user"></i> Người báo cáo:
+              <strong>{{ alert.user.full_name or alert.user.username }}</strong>
+              ({{ alert.user.email }}) {% if alert.user.phone %} - {{
+              alert.user.phone }}{% endif %}
+            </small>
+          </div>
+          {% endif %}
+
+          <!-- Additional Info (Collapsible) -->
+          {% if alert.vehicle or alert.latitude or alert.response_team %}
+          <div class="mt-3 pt-3 border-top">
+            <div class="row">
+              {% if alert.vehicle %}
+              <div class="col-md-3">
+                <small class="text-muted">
+                  <i class="fas fa-car"></i> Phương tiện:
+                  <strong>{{ alert.vehicle.vehicle_code }}</strong>
+                  ({{ alert.vehicle.brand }} {{ alert.vehicle.model }})
+                </small>
+              </div>
+              {% endif %} {% if alert.latitude and alert.longitude %}
+              <div class="col-md-4">
+                <small class="text-muted">
+                  <i class="fas fa-map-marker-alt"></i> Vị trí:
+                  <a
+                    href="https://www.google.com/maps?q={{ alert.latitude }},{{ alert.longitude }}"
+                    target="_blank"
+                  >
+                    {{ alert.latitude|round(5) }}, {{ alert.longitude|round(5)
+                    }}
+                  </a>
+                </small>
+              </div>
+              {% endif %} {% if alert.response_team %}
+              <div class="col-md-3">
+                <small class="text-muted">
+                  <i class="fas fa-users"></i> Đội ứng cứu:
+                  <strong>{{ alert.response_team }}</strong>
+                </small>
+              </div>
+              {% endif %} {% if alert.response_time %}
+              <div class="col-md-2">
+                <small class="text-muted">
+                  <i class="fas fa-clock"></i> Phản hồi: {{
+                  alert.response_time.strftime('%H:%M %d/%m') }}
+                </small>
+              </div>
+              {% endif %}
+            </div>
+            {% if alert.resolution_notes %}
+            <div class="row mt-2">
+              <div class="col-md-12">
+                <small class="text-muted">
+                  <i class="fas fa-file-alt"></i> Ghi chú giải quyết:
+                  <em>{{ alert.resolution_notes }}</em>
+                </small>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="fas fa-check-circle fa-3x mb-3"></i>
+        <p>Chưa có cảnh báo khẩn cấp nào</p>
+        <p class="text-success">
+          Điều này là tốt! Hãy giữ an toàn khi di chuyển.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Report Emergency Modal -->
+<div
+  class="modal fade"
+  id="reportModal"
+  tabindex="-1"
+  aria-labelledby="reportModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="reportModalLabel">
+          <i class="fas fa-exclamation-triangle"></i> Báo cáo khẩn cấp
+        </h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <i class="fas fa-info-circle"></i>
+          <strong>Chỉ sử dụng trong trường hợp khẩn cấp thực sự!</strong>
+          Đội ứng cứu sẽ được thông báo ngay lập tức.
+        </div>
+
+        <form id="emergencyForm">
+          <div class="mb-3">
+            <label for="alert_type" class="form-label">
+              <i class="fas fa-tag"></i> Loại khẩn cấp *
+            </label>
+            <select
+              class="form-select"
+              id="alert_type"
+              name="alert_type"
+              required
+            >
+              <option value="">-- Chọn loại --</option>
+              <option value="accident">Tai nạn giao thông</option>
+              <option value="breakdown">Hỏng hóc phương tiện</option>
+              <option value="theft">Mất cắp / Đe dọa</option>
+              <option value="medical">Cấp cứu y tế</option>
+              <option value="emergency">Khẩn cấp khác</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="severity" class="form-label">
+              <i class="fas fa-exclamation-circle"></i> Mức độ nghiêm trọng *
+            </label>
+            <select class="form-select" id="severity" name="severity" required>
+              <option value="medium">Trung bình</option>
+              <option value="high">Cao</option>
+              <option value="critical">Cực kỳ nghiêm trọng</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="description" class="form-label">
+              <i class="fas fa-comment"></i> Mô tả tình huống *
+            </label>
+            <textarea
+              class="form-control"
+              id="description"
+              name="description"
+              rows="3"
+              placeholder="Mô tả chi tiết tình huống khẩn cấp..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label for="vehicle_id" class="form-label">
+              <i class="fas fa-car"></i> Phương tiện (nếu có)
+            </label>
+            <select class="form-select" id="vehicle_id" name="vehicle_id">
+              <option value="">-- Không có --</option>
+              <!-- Will be populated dynamically -->
+            </select>
+            <div class="form-text">
+              Chọn phương tiện nếu sự cố liên quan đến chuyến đi hiện tại
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <button
+              type="button"
+              class="btn btn-info btn-sm"
+              onclick="getCurrentLocation()"
+            >
+              <i class="fas fa-map-marker-alt"></i> Lấy vị trí hiện tại
+            </button>
+            <div id="locationInfo" class="mt-2 text-muted"></div>
+            <input type="hidden" id="latitude" name="latitude" />
+            <input type="hidden" id="longitude" name="longitude" />
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Hủy
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          onclick="submitEmergency()"
+        >
+          <i class="fas fa-paper-plane"></i> Gửi cảnh báo khẩn cấp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+  function getCurrentLocation() {
+    if (navigator.geolocation) {
+      const locationInfo = document.getElementById("locationInfo");
+      locationInfo.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Đang lấy vị trí...';
+
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          document.getElementById("latitude").value = lat;
+          document.getElementById("longitude").value = lng;
+
+          locationInfo.innerHTML = `<i class="fas fa-check-circle text-success"></i> 
+                    Đã lấy vị trí: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        },
+        function (error) {
+          locationInfo.innerHTML =
+            '<i class="fas fa-times-circle text-danger"></i> Không thể lấy vị trí. ' +
+            error.message;
+        }
+      );
+    } else {
+      alert("Trình duyệt không hỗ trợ định vị.");
+    }
+  }
+
+  function submitEmergency() {
+    const form = document.getElementById("emergencyForm");
+    const formData = new FormData(form);
+
+    // Validate required fields
+    if (
+      !formData.get("alert_type") ||
+      !formData.get("severity") ||
+      !formData.get("description")
+    ) {
+      alert("Vui lòng điền đầy đủ thông tin bắt buộc!");
+      return;
+    }
+
+    const data = {
+      alert_type: formData.get("alert_type"),
+      severity: formData.get("severity"),
+      description: formData.get("description"),
+      vehicle_id: formData.get("vehicle_id") || null,
+      latitude: formData.get("latitude") || null,
+      longitude: formData.get("longitude") || null,
+    };
+
+    console.log("Submitting emergency:", data);
+
+    // Disable button
+    const submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+
+    fetch("/emergency/report", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert(
+            "Đã gửi cảnh báo khẩn cấp!\nMã cảnh báo: " +
+              data.alert_code +
+              "\n" +
+              data.message
+          );
+          location.reload();
+        } else {
+          alert("Lỗi: " + (data.error || "Không thể gửi cảnh báo"));
+          submitBtn.disabled = false;
+          submitBtn.innerHTML =
+            '<i class="fas fa-paper-plane"></i> Gửi cảnh báo khẩn cấp';
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("Đã có lỗi xảy ra: " + error.message);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML =
+          '<i class="fas fa-paper-plane"></i> Gửi cảnh báo khẩn cấp';
+      });
+  }
+
+  // Update alert status (Admin only)
+  function updateAlertStatus(alertId, alertCode, currentStatus) {
+    const newStatus = prompt(
+      `Cập nhật trạng thái cho cảnh báo ${alertCode}\n\nTrạng thái hiện tại: ${currentStatus}\n\nChọn trạng thái mới:\n- open (Đang mở)\n- acknowledged (Đã tiếp nhận)\n- resolved (Đã giải quyết)\n- closed (Đã đóng)`,
+      currentStatus
+    );
+
+    if (!newStatus || newStatus === currentStatus) {
+      return;
+    }
+
+    const validStatuses = ["open", "acknowledged", "resolved", "closed"];
+    if (!validStatuses.includes(newStatus)) {
+      alert(
+        "Trạng thái không hợp lệ! Chọn: open, acknowledged, resolved, closed"
+      );
+      return;
+    }
+
+    const responseTeam = prompt("Đội ứng cứu (tùy chọn):");
+    const notes = prompt("Ghi chú giải quyết (tùy chọn):");
+
+    const data = {
+      status: newStatus,
+    };
+
+    if (responseTeam) data.response_team = responseTeam;
+    if (notes) data.resolution_notes = notes;
+
+    fetch(`/emergency/${alertId}/update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Đã cập nhật trạng thái cảnh báo!");
+          location.reload();
+        } else {
+          alert("Lỗi: " + (data.error || "Không thể cập nhật"));
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("Đã có lỗi xảy ra: " + error.message);
+      });
+  }
+
+  // Auto-get location when modal opens
+  document
+    .getElementById("reportModal")
+    .addEventListener("shown.bs.modal", function () {
+      getCurrentLocation();
+    });
+</script>
+{% endblock %}

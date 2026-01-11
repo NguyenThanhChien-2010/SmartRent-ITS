@@ -272,7 +272,7 @@ class EmergencyAlert(db.Model):
     
     # Foreign Keys
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=False)
+    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'))
     trip_id = db.Column(db.Integer, db.ForeignKey('trips.id'))
     
     # Alert Info

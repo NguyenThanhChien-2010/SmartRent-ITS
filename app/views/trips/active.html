@@ -1,0 +1,259 @@
+{% extends "base.html" %} {% block title %}Chuyến đi của tôi - SmartRent{%
+endblock %} {% block content %}
+<div class="container mt-4">
+  <h2><i class="fas fa-route"></i> Chuyến đi của tôi</h2>
+  <hr />
+
+  {% if trip %}
+  <!-- Active Trip -->
+  <div class="card border-primary">
+    <div class="card-header bg-primary text-white">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          {% if trip.status == 'pending' %}
+          <i class="fas fa-clock"></i> Đang chờ quét QR {% elif trip.status ==
+          'in_progress' %} <i class="fas fa-play-circle"></i> Đang di chuyển {%
+          endif %}
+        </h5>
+        <span class="badge bg-light text-dark">{{ trip.trip_code }}</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Vehicle Info -->
+      <div class="row mb-3">
+        <div class="col-md-4 text-center">
+          <i
+            class="fas fa-{{ 'bicycle' if trip.vehicle.vehicle_type == 'bicycle' else ('motorcycle' if trip.vehicle.vehicle_type == 'motorbike' else 'car') }} fa-4x text-primary"
+          ></i>
+          <h5 class="mt-2">
+            {{ trip.vehicle.brand }} {{ trip.vehicle.model }}
+          </h5>
+          <p class="text-muted">{{ trip.vehicle.vehicle_code }}</p>
+        </div>
+        <div class="col-md-8">
+          <div class="row">
+            <div class="col-6 mb-3">
+              <div class="card bg-light">
+                <div class="card-body text-center">
+                  <i class="fas fa-battery-three-quarters text-success"></i>
+                  <h4>{{ trip.vehicle.battery_level }}%</h4>
+                  <small>Pin</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 mb-3">
+              <div class="card bg-light">
+                <div class="card-body text-center">
+                  <i class="fas fa-coins text-warning"></i>
+                  <h4>{{ "{:,.0f}".format(trip.vehicle.price_per_minute) }}</h4>
+                  <small>VND/phút</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if trip.status == 'pending' %}
+      <!-- QR Scanner -->
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i> Bạn có
+        <strong>5 phút</strong> để quét QR code và bắt đầu chuyến đi
+      </div>
+
+      <div class="text-center mb-3">
+        <button class="btn btn-primary btn-lg" onclick="startQRScanner()">
+          <i class="fas fa-qrcode"></i> Quét QR Code để mở khóa
+        </button>
+      </div>
+
+      <!-- QR Scanner Video -->
+      <div id="qrScanner" style="display: none">
+        <div class="card">
+          <div class="card-body text-center">
+            <video id="qrVideo" width="100%" style="max-width: 500px"></video>
+            <p class="mt-2">Hướng camera vào QR code trên xe</p>
+            <button class="btn btn-secondary" onclick="stopQRScanner()">
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {% elif trip.status == 'in_progress' %}
+      <!-- Trip In Progress -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <div class="card bg-info text-white">
+            <div class="card-body">
+              <h6><i class="fas fa-clock"></i> Thời gian đã đi</h6>
+              <h3 id="tripDuration">Đang tính...</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card bg-success text-white">
+            <div class="card-body">
+              <h6><i class="fas fa-money-bill-wave"></i> Chi phí ước tính</h6>
+              <h3 id="estimatedCost">0 VND</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div class="card mb-3">
+        <div class="card-body p-0">
+          <div id="tripMap" style="height: 400px"></div>
+        </div>
+      </div>
+
+      <!-- End Trip Button -->
+      <button class="btn btn-danger btn-lg w-100" onclick="endTrip()">
+        <i class="fas fa-stop-circle"></i> Kết thúc chuyến đi
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {% else %}
+  <!-- No Active Trip -->
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle"></i> Bạn chưa có chuyến đi nào đang diễn ra.
+  </div>
+  <a href="/vehicles/map" class="btn btn-primary">
+    <i class="fas fa-search"></i> Tìm xe để thuê
+  </a>
+  {% endif %}
+</div>
+{% endblock %} {% block extra_js %} {% if trip and trip.status == 'in_progress'
+%}
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<script>
+  const startTime = new Date('{{ trip.start_time }}');
+  const pricePerMinute = {{ trip.vehicle.price_per_minute }};
+  let map, userMarker;
+
+  // Update duration and cost
+  setInterval(() => {
+      const now = new Date();
+      const diff = Math.floor((now - startTime) / 1000);
+      const hours = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+      const seconds = diff % 60;
+
+      document.getElementById('tripDuration').textContent =
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      const totalMinutes = diff / 60;
+      const cost = Math.ceil(totalMinutes * pricePerMinute);
+      document.getElementById('estimatedCost').textContent = cost.toLocaleString('vi-VN') + ' VND';
+  }, 1000);
+
+  // Initialize map
+  document.addEventListener('DOMContentLoaded', function() {
+      map = L.map('tripMap').setView([{{ trip.start_latitude }}, {{ trip.start_longitude }}], 15);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Track user location
+      if (navigator.geolocation) {
+          navigator.geolocation.watchPosition(function(position) {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+
+              if (userMarker) {
+                  userMarker.setLatLng([lat, lng]);
+              } else {
+                  userMarker = L.marker([lat, lng]).addTo(map).bindPopup('Vị trí của bạn');
+                  map.setView([lat, lng], 15);
+              }
+          });
+      }
+  });
+
+  function endTrip() {
+      if (!confirm('Bạn muốn kết thúc chuyến đi?')) {
+          return;
+      }
+
+      navigator.geolocation.getCurrentPosition(function(position) {
+          fetch('/trips/{{ trip.id }}/end', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert('Chuyến đi đã kết thúc!\nTổng chi phí: ' + data.total_cost.toLocaleString('vi-VN') + ' VND');
+                  window.location.href = '/trips/' + data.trip_id + '/rating';
+              } else {
+                  alert('Lỗi: ' + data.error);
+              }
+          });
+      });
+  }
+</script>
+{% elif trip and trip.status == 'pending' %}
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+  let html5QrCode;
+
+  function startQRScanner() {
+    document.getElementById("qrScanner").style.display = "block";
+
+    html5QrCode = new Html5Qrcode("qrVideo");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      onScanSuccess,
+      onScanError
+    );
+  }
+
+  function stopQRScanner() {
+    if (html5QrCode) {
+      html5QrCode.stop();
+      document.getElementById("qrScanner").style.display = "none";
+    }
+  }
+
+  function onScanSuccess(decodedText) {
+    console.log("QR Code detected:", decodedText);
+    stopQRScanner();
+
+    // Send QR code to server
+    fetch("/trips/{{ trip.id }}/scan-qr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ qr_code: decodedText }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Mở khóa thành công! Chuyến đi đã bắt đầu.");
+          location.reload();
+        } else {
+          alert("Lỗi: " + data.error);
+          startQRScanner();
+        }
+      });
+  }
+
+  function onScanError(error) {
+    // Ignore scan errors
+  }
+</script>
+{% endif %} {% endblock %}
