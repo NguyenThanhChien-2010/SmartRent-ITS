@@ -15,8 +15,10 @@
                         <label class="form-label">Loại xe</label>
                         <select class="form-select" id="vehicleTypeFilter">
                             <option value="all">Tất cả</option>
-                            <option value="bike">Xe đạp điện</option>
+                            <option value="bike">Xe đạp</option>
                             <option value="motorbike">Xe máy</option>
+                            <option value="ebike">Xe đạp điện</option>
+                            <option value="scooter">Scooter</option>
                             <option value="car">Ô tô</option>
                         </select>
                     </div>
@@ -53,6 +55,53 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+/* Remove default Leaflet marker styles */
+.custom-div-icon {
+    background: transparent !important;
+    border: none !important;
+}
+
+.vehicle-icon {
+    background: #fff;
+    border: 3px solid #2196F3;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.vehicle-icon.bike { border-color: #4CAF50; color: #4CAF50; }
+.vehicle-icon.motorbike { border-color: #FF9800; color: #FF9800; }
+.vehicle-icon.ebike { border-color: #9C27B0; color: #9C27B0; }
+.vehicle-icon.scooter { border-color: #00BCD4; color: #00BCD4; }
+.vehicle-icon.car { border-color: #F44336; color: #F44336; }
+
+.user-icon {
+    background: #2196F3;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.vehicle-card:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+</style>
+
 <script>
 let map;
 let userMarker;
@@ -61,7 +110,7 @@ let userLocation = null;
 
 // Initialize map
 document.addEventListener('DOMContentLoaded', function() {
-    // Default location (Vietnam)
+    // Default location (Ho Chi Minh City)
     map = L.map('map').setView([10.8231, 106.6297], 13);
     
     const mapboxToken = {{ mapbox_token|tojson }};
@@ -89,14 +138,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             map.setView([userLocation.lat, userLocation.lng], 15);
             
-            // Add user marker
+            // Add user marker with custom icon
+            const userIcon = L.divIcon({
+                html: '<div class="user-icon"><i class="fas fa-user"></i></div>',
+                className: 'custom-div-icon',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+            
             userMarker = L.marker([userLocation.lat, userLocation.lng], {
-                icon: L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41]
-                })
-            }).addTo(map).bindPopup('Vị trí của bạn');
+                icon: userIcon
+            }).addTo(map).bindPopup('<strong>Vị trí của bạn</strong>');
             
             // Search for nearby vehicles
             searchVehicles();
@@ -131,24 +183,30 @@ function searchVehicles() {
             }
             
             data.vehicles.forEach(vehicle => {
-                // Add marker to map
+                // Add marker to map with custom icon
                 const icon = getVehicleIcon(vehicle.type);
                 const marker = L.marker([vehicle.latitude, vehicle.longitude], { icon })
                     .addTo(map)
                     .bindPopup(`
-                        <strong>${vehicle.brand} ${vehicle.model}</strong><br>
-                        Loại: ${vehicle.type}<br>
-                        Khoảng cách: ${vehicle.distance} km<br>
-                        Pin: ${vehicle.battery}%<br>
-                        Giá: ${vehicle.price_per_minute} VND/phút<br>
-                        <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary mt-2">Chi tiết</a>
+                        <div style="min-width: 200px;">
+                            <strong>${vehicle.brand} ${vehicle.model}</strong><br>
+                            <span class="badge bg-primary">${getVehicleTypeName(vehicle.type)}</span><br>
+                            <hr style="margin: 8px 0;">
+                            <i class="fas fa-map-marker-alt text-danger"></i> ${vehicle.distance} km<br>
+                            <i class="fas fa-battery-full text-success"></i> Pin: ${vehicle.battery}%<br>
+                            <i class="fas fa-money-bill-wave text-warning"></i> ${vehicle.price_per_minute} VND/phút<br>
+                            <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary mt-2 w-100 text-white" style="text-decoration: none;">
+                                <i class="fas fa-car"></i> Chi tiết & Thuê xe
+                            </a>
+                        </div>
                     `);
                 
                 vehicleMarkers.push(marker);
                 
-                // Add to list
+                // Add to list with index for click event
+                const markerIndex = vehicleMarkers.length - 1;
                 vehicleList.innerHTML += `
-                    <div class="card mb-2">
+                    <div class="card mb-2 vehicle-card" onclick="zoomToVehicle(${markerIndex})" style="cursor: pointer;">
                         <div class="card-body p-2">
                             <h6 class="mb-1">${vehicle.brand} ${vehicle.model}</h6>
                             <small class="text-muted">
@@ -156,25 +214,57 @@ function searchVehicles() {
                                 <i class="fas fa-battery-full"></i> ${vehicle.battery}%
                             </small>
                             <div class="mt-2">
-                                <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary">Thuê xe</a>
+                                <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary text-white" onclick="event.stopPropagation();">Thuê xe</a>
                             </div>
                         </div>
                     </div>
                 `;
             });
+        })
+        .catch(error => {
+            console.error('Error fetching vehicles:', error);
+            document.getElementById('vehicleList').innerHTML = '<p class="text-danger">Lỗi khi tải dữ liệu xe</p>';
         });
 }
 
 function getVehicleIcon(type) {
-    let color = 'green';
-    if (type === 'motorbike') color = 'orange';
-    if (type === 'car') color = 'red';
+    const iconMap = {
+        'bike': 'fa-bicycle',
+        'motorbike': 'fa-motorcycle',
+        'ebike': 'fa-bicycle',
+        'scooter': 'fa-motorcycle',
+        'car': 'fa-car'
+    };
     
-    return L.icon({
-        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-        iconSize: [25, 41],
-        iconAnchor: [12, 41]
+    const icon = iconMap[type] || 'fa-car';
+    
+    return L.divIcon({
+        html: `<div class="vehicle-icon ${type}"><i class="fas ${icon}"></i></div>`,
+        className: 'custom-div-icon',
+        iconSize: [45, 45],
+        iconAnchor: [22, 22],
+        popupAnchor: [0, -22]
     });
+}
+
+function getVehicleTypeName(type) {
+    const names = {
+        'bike': 'Xe đạp',
+        'motorbike': 'Xe máy',
+        'ebike': 'Xe đạp điện',
+        'scooter': 'Scooter điện',
+        'car': 'Ô tô'
+    };
+    return names[type] || type;
+}
+
+// Zoom to specific vehicle marker
+function zoomToVehicle(index) {
+    if (index >= 0 && index < vehicleMarkers.length) {
+        const marker = vehicleMarkers[index];
+        map.setView(marker.getLatLng(), 17);
+        marker.openPopup();
+    }
 }
 
 // Event listeners
