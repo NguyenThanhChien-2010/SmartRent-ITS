@@ -27,7 +27,7 @@ def topup():
     """Nạp tiền vào ví"""
     if request.method == 'POST':
         data = request.get_json()
-        amount = data.get('amount', type=float)
+        amount = float(data.get('amount', 0))
         
         if amount <= 0:
             return jsonify({'error': 'Số tiền không hợp lệ'}), 400
