@@ -1,11 +1,164 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app
 from flask_login import login_required, current_user
-from app.models import db, Trip, Booking, Vehicle, Payment
+from app.models import db, Trip, Booking, Vehicle, Payment, User
 from app.utils.repositories import TripRepository, BookingRepository, PaymentRepository, VehicleRepository
 from datetime import datetime, timedelta
 from sqlalchemy import func
+import math
 
 trip_bp = Blueprint('trip', __name__, url_prefix='/trips')
+
+@trip_bp.route('/active')
+@login_required
+def active_trip():
+    """Hiển thị chuyến đi đang diễn ra"""
+    trip = Trip.query.filter(
+        Trip.user_id == current_user.id,
+        Trip.status.in_(['pending', 'in_progress'])
+    ).order_by(Trip.created_at.desc()).first()
+    
+    return render_template('trips/active.html', trip=trip)
+
+
+@trip_bp.route('/<int:trip_id>/scan-qr', methods=['POST'])
+@login_required
+def scan_qr(trip_id):
+    """Quét QR code để mở khóa và bắt đầu chuyến đi"""
+    trip = Trip.query.get_or_404(trip_id)
+    
+    if trip.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if trip.status != 'pending':
+        return jsonify({'error': 'Trip không ở trạng thái chờ'}), 400
+    
+    data = request.get_json()
+    qr_code = data.get('qr_code')
+    
+    # Verify QR code matches vehicle
+    vehicle = Vehicle.query.get(trip.vehicle_id)
+    if vehicle.qr_code != qr_code and vehicle.vehicle_code != qr_code:
+        return jsonify({'error': 'QR code không hợp lệ cho xe này'}), 400
+    
+    # Unlock vehicle and start trip
+    vehicle.status = 'in_use'
+    vehicle.lock_status = 'unlocked'
+    vehicle.is_locked = False
+    
+    trip.status = 'in_progress'
+    trip.start_time = datetime.utcnow()
+    
+    try:
+        db.session.commit()
+        
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            VehicleRepository.update_fields(vehicle.id, {
+                'status': 'in_use',
+                'lock_status': 'unlocked'
+            })
+        
+        return jsonify({
+            'success': True,
+            'message': 'Xe đã được mở khóa. Chuyến đi bắt đầu!'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@trip_bp.route('/<int:trip_id>/end', methods=['POST'])
+@login_required
+def end_trip(trip_id):
+    """Kết thúc chuyến đi và tính toán chi phí"""
+    trip = Trip.query.get_or_404(trip_id)
+    
+    if trip.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if trip.status != 'in_progress':
+        return jsonify({'error': 'Trip không đang diễn ra'}), 400
+    
+    data = request.get_json()
+    
+    # Calculate trip details
+    trip.end_time = datetime.utcnow()
+    trip.end_latitude = data.get('latitude')
+    trip.end_longitude = data.get('longitude')
+    trip.status = 'completed'
+    
+    # Calculate duration in minutes
+    duration = (trip.end_time - trip.start_time).total_seconds() / 60
+    trip.duration_minutes = math.ceil(duration)
+    
+    # Calculate distance (simplified)
+    if trip.start_latitude and trip.end_latitude:
+        trip.distance_km = calculate_distance(
+            trip.start_latitude, trip.start_longitude,
+            trip.end_latitude, trip.end_longitude
+        )
+    
+    # Calculate cost
+    vehicle = Vehicle.query.get(trip.vehicle_id)
+    total_cost = trip.duration_minutes * vehicle.price_per_minute
+    trip.total_cost = total_cost
+    
+    # Lock vehicle and make available
+    vehicle.status = 'available'
+    vehicle.lock_status = 'locked'
+    vehicle.is_locked = True
+    
+    # Deduct from user wallet
+    user = User.query.get(current_user.id)
+    if user.wallet_balance < total_cost:
+        return jsonify({'error': 'Số dư không đủ để thanh toán'}), 400
+    
+    user.wallet_balance -= total_cost
+    
+    # Create payment record
+    payment_code = f"PAY{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    payment = Payment(
+        payment_code=payment_code,
+        user_id=user.id,
+        trip_id=trip.id,
+        amount=total_cost,
+        payment_method='wallet',
+        payment_status='completed',
+        description=f'Thanh toán chuyến đi {trip.trip_code}'
+    )
+    
+    try:
+        db.session.add(payment)
+        db.session.commit()
+        
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            VehicleRepository.update_fields(vehicle.id, {
+                'status': 'available',
+                'lock_status': 'locked'
+            })
+        
+        return jsonify({
+            'success': True,
+            'trip_id': trip.id,
+            'total_cost': total_cost,
+            'duration_minutes': trip.duration_minutes,
+            'distance_km': trip.distance_km,
+            'message': 'Chuyến đi đã kết thúc'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate distance between two points in km"""
+    R = 6371  # Earth radius in km
+    dLat = math.radians(lat2 - lat1)
+    dLon = math.radians(lon2 - lon1)
+    a = math.sin(dLat/2) * math.sin(dLat/2) + math.cos(math.radians(lat1)) * \
+        math.cos(math.radians(lat2)) * math.sin(dLon/2) * math.sin(dLon/2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return round(R * c, 2)
+
 
 @trip_bp.route('/start/<int:booking_id>', methods=['GET', 'POST'])
 @login_required
@@ -291,3 +444,38 @@ def get_route():
     }
     
     return jsonify(route)
+
+
+@trip_bp.route('/<int:trip_id>/rating', methods=['GET', 'POST'])
+@login_required
+def rate_trip(trip_id):
+    """Đánh giá chuyến đi"""
+    trip = Trip.query.get_or_404(trip_id)
+    
+    if trip.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if request.method == 'GET':
+        return render_template('trips/rating.html', trip=trip)
+    
+    # POST - Submit rating
+    data = request.get_json()
+    rating = data.get('rating')
+    comment = data.get('comment', '')
+    
+    if not rating or rating < 1 or rating > 5:
+        return jsonify({'error': 'Rating phải từ 1-5'}), 400
+    
+    trip.rating = rating
+    trip.feedback = comment
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Cảm ơn bạn đã đánh giá!'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+

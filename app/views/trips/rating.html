@@ -1,0 +1,180 @@
+{% extends "base.html" %} {% block title %}Đánh giá chuyến đi - SmartRent{%
+endblock %} {% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-success text-white text-center">
+          <h4><i class="fas fa-check-circle"></i> Chuyến đi hoàn thành!</h4>
+        </div>
+        <div class="card-body">
+          <!-- Trip Summary -->
+          <div class="text-center mb-4">
+            <h5>{{ trip.vehicle.brand }} {{ trip.vehicle.model }}</h5>
+            <p class="text-muted">{{ trip.trip_code }}</p>
+          </div>
+
+          <div class="row text-center mb-4">
+            <div class="col-4">
+              <div class="card bg-light">
+                <div class="card-body p-2">
+                  <i class="fas fa-clock text-primary"></i>
+                  <h5>{{ trip.duration_minutes }}</h5>
+                  <small>Phút</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="card bg-light">
+                <div class="card-body p-2">
+                  <i class="fas fa-road text-info"></i>
+                  <h5>{{ trip.distance_km }}</h5>
+                  <small>km</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="card bg-light">
+                <div class="card-body p-2">
+                  <i class="fas fa-money-bill-wave text-success"></i>
+                  <h5>{{ "{:,.0f}".format(trip.total_cost) }}</h5>
+                  <small>VND</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr />
+
+          <!-- Rating Form -->
+          <form id="ratingForm" onsubmit="submitRating(event)">
+            <div class="mb-4 text-center">
+              <h5>Đánh giá chuyến đi của bạn</h5>
+              <div class="rating-stars mb-2">
+                <i class="far fa-star star" data-rating="1"></i>
+                <i class="far fa-star star" data-rating="2"></i>
+                <i class="far fa-star star" data-rating="3"></i>
+                <i class="far fa-star star" data-rating="4"></i>
+                <i class="far fa-star star" data-rating="5"></i>
+              </div>
+              <input type="hidden" id="rating" name="rating" value="0" />
+              <p class="text-muted" id="ratingText">Chọn số sao</p>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Nhận xét (tuỳ chọn)</label>
+              <textarea
+                class="form-control"
+                name="comment"
+                rows="4"
+                placeholder="Chia sẻ trải nghiệm của bạn..."
+              ></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fas fa-paper-plane"></i> Gửi đánh giá
+            </button>
+            <a
+              href="/trips/history"
+              class="btn btn-outline-secondary w-100 mt-2"
+            >
+              Bỏ qua
+            </a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_css %}
+<style>
+  .rating-stars {
+    font-size: 2.5rem;
+  }
+  .star {
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .star:hover,
+  .star.active {
+    color: #ffc107;
+  }
+</style>
+{% endblock %} {% block extra_js %}
+<script>
+  let selectedRating = 0;
+  const stars = document.querySelectorAll(".star");
+
+  stars.forEach((star) => {
+    star.addEventListener("click", function () {
+      selectedRating = parseInt(this.getAttribute("data-rating"));
+      document.getElementById("rating").value = selectedRating;
+      updateStars();
+      updateRatingText();
+    });
+
+    star.addEventListener("mouseover", function () {
+      const rating = parseInt(this.getAttribute("data-rating"));
+      highlightStars(rating);
+    });
+  });
+
+  document
+    .querySelector(".rating-stars")
+    .addEventListener("mouseout", function () {
+      highlightStars(selectedRating);
+    });
+
+  function highlightStars(rating) {
+    stars.forEach((star, index) => {
+      if (index < rating) {
+        star.classList.remove("far");
+        star.classList.add("fas", "active");
+      } else {
+        star.classList.remove("fas", "active");
+        star.classList.add("far");
+      }
+    });
+  }
+
+  function updateStars() {
+    highlightStars(selectedRating);
+  }
+
+  function updateRatingText() {
+    const texts = ["", "Rất tệ", "Tệ", "Bình thường", "Tốt", "Xuất sắc"];
+    document.getElementById("ratingText").textContent = texts[selectedRating];
+  }
+
+  function submitRating(event) {
+    event.preventDefault();
+
+    if (selectedRating === 0) {
+      alert("Vui lòng chọn số sao đánh giá!");
+      return;
+    }
+
+    const formData = new FormData(event.target);
+    const data = {
+      rating: selectedRating,
+      comment: formData.get("comment"),
+    };
+
+    fetch("/trips/{{ trip.id }}/rating", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Cảm ơn bạn đã đánh giá!");
+          window.location.href = "/trips/history";
+        } else {
+          alert("Lỗi: " + data.error);
+        }
+      });
+  }
+</script>
+{% endblock %}

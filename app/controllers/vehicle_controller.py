@@ -116,41 +116,48 @@ def book_vehicle(vehicle_id):
     if vehicle.status != 'available':
         return jsonify({'error': 'Xe không khả dụng'}), 400
     
-    # Check if user has enough balance
-    estimated_cost = vehicle.price_per_minute * 60  # 1 hour estimate
-    if current_user.wallet_balance < estimated_cost:
-        return jsonify({'error': 'Số dư không đủ. Vui lòng nạp tiền.'}), 400
+    # Check if user already has active trip
+    active_trip = Trip.query.filter_by(
+        user_id=current_user.id,
+        status='in_progress'
+    ).first()
     
-    # Create booking
-    booking_code = f"BK{datetime.now().strftime('%Y%m%d%H%M%S')}{vehicle_id}"
-    booking = Booking(
-        booking_code=booking_code,
+    if active_trip:
+        return jsonify({'error': 'Bạn đang có chuyến đi đang diễn ra'}), 400
+    
+    # Check if user has enough balance (deposit ~1 hour)
+    estimated_cost = vehicle.price_per_minute * 60
+    if current_user.wallet_balance < estimated_cost:
+        return jsonify({'error': f'Số dư không đủ. Cần tối thiểu {estimated_cost:,.0f} VND để đặt xe.'}), 400
+    
+    # Create trip with pending status
+    trip_code = f"TRIP{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    trip = Trip(
+        trip_code=trip_code,
         user_id=current_user.id,
         vehicle_id=vehicle_id,
-        status='confirmed',
-        start_time=datetime.utcnow()
+        status='pending',  # waiting for QR scan
+        start_latitude=vehicle.latitude,
+        start_longitude=vehicle.longitude,
+        start_address=vehicle.address
     )
     
-    # Update vehicle status
-    vehicle.status = 'in_use'
-    vehicle.is_locked = False
+    # Reserve vehicle
+    vehicle.status = 'reserved'
     
     try:
-        db.session.add(booking)
+        db.session.add(trip)
         db.session.commit()
-        # Mirror status to Firestore if enabled
+        
+        # Mirror to Firestore if enabled
         if current_app.config.get('FIREBASE_ENABLED', False):
-            VehicleRepository.update_fields(vehicle_id, {
-                'status': 'in_use',
-                'is_locked': False,
-                'lock_status': 'unlocked'
-            })
+            VehicleRepository.update_fields(vehicle_id, {'status': 'reserved'})
         
         return jsonify({
             'success': True,
-            'booking_code': booking_code,
-            'message': 'Đặt xe thành công!',
-            'redirect': f'/trips/start/{booking.id}'
+            'trip_code': trip_code,
+            'trip_id': trip.id,
+            'message': 'Đặt xe thành công! Vui lòng quét QR code trong vòng 5 phút.'
         })
     except Exception as e:
         db.session.rollback()

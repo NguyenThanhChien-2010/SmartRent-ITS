@@ -11,19 +11,36 @@ def report_emergency():
     """Báo cáo khẩn cấp (eCall)"""
     data = request.get_json()
     
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
     alert_code = f"ALERT{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    
+    # Convert latitude/longitude to float if provided
+    latitude = None
+    longitude = None
+    if data.get('latitude'):
+        try:
+            latitude = float(data.get('latitude'))
+        except (ValueError, TypeError):
+            pass
+    if data.get('longitude'):
+        try:
+            longitude = float(data.get('longitude'))
+        except (ValueError, TypeError):
+            pass
     
     alert = EmergencyAlert(
         alert_code=alert_code,
         user_id=current_user.id,
         vehicle_id=data.get('vehicle_id'),
         trip_id=data.get('trip_id'),
-        alert_type=data.get('alert_type'),  # accident, breakdown, theft, medical
+        alert_type=data.get('alert_type', 'emergency'),
         severity=data.get('severity', 'medium'),
-        description=data.get('description'),
-        latitude=data.get('latitude'),
-        longitude=data.get('longitude'),
-        address=data.get('address'),
+        description=data.get('description', ''),
+        latitude=latitude,
+        longitude=longitude,
+        address=data.get('address', ''),
         status='open'
     )
     
@@ -41,6 +58,7 @@ def report_emergency():
         })
     except Exception as e:
         db.session.rollback()
+        print(f"Error creating emergency alert: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -90,10 +108,16 @@ def emergency_button(vehicle_id):
 @login_required
 def my_alerts():
     """Danh sách cảnh báo của tôi"""
-    alerts = EmergencyAlert.query.filter_by(user_id=current_user.id)\
-        .order_by(EmergencyAlert.created_at.desc()).all()
+    # Admin xem tất cả alerts, user chỉ xem của mình
+    if current_user.role == 'admin':
+        alerts = EmergencyAlert.query.order_by(EmergencyAlert.created_at.desc()).all()
+        is_admin = True
+    else:
+        alerts = EmergencyAlert.query.filter_by(user_id=current_user.id)\
+            .order_by(EmergencyAlert.created_at.desc()).all()
+        is_admin = False
     
-    return render_template('emergency/my_alerts.html', alerts=alerts)
+    return render_template('emergency/my_alerts.html', alerts=alerts, is_admin=is_admin)
 
 
 @emergency_bp.route('/<int:alert_id>/status')
@@ -112,3 +136,41 @@ def alert_status(alert_id):
         'response_time': alert.response_time.isoformat() if alert.response_time else None,
         'resolution_notes': alert.resolution_notes
     })
+
+
+@emergency_bp.route('/<int:alert_id>/update', methods=['POST'])
+@login_required
+def update_alert(alert_id):
+    """Cập nhật trạng thái cảnh báo (Admin only)"""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    alert = EmergencyAlert.query.get_or_404(alert_id)
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    try:
+        # Update fields
+        if 'status' in data:
+            alert.status = data['status']
+        if 'response_team' in data:
+            alert.response_team = data['response_team']
+        if 'resolution_notes' in data:
+            alert.resolution_notes = data['resolution_notes']
+        
+        # Set response time if status changes to 'responding'
+        if data.get('status') == 'responding' and not alert.response_time:
+            alert.response_time = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Đã cập nhật trạng thái cảnh báo'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+

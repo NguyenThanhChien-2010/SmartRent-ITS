@@ -36,9 +36,9 @@ class Config:
     ENABLE_EXTERNAL_PAYMENT = os.environ.get('ENABLE_EXTERNAL_PAYMENT', 'false').lower() == 'true'
 
     # Firebase / Firestore
-    FIREBASE_ENABLED = os.environ.get('FIREBASE_ENABLED', 'false').lower() == 'true'
-    FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', '')
-    FIREBASE_CREDENTIALS_PATH = os.environ.get('FIREBASE_CREDENTIALS_PATH', '')
+    FIREBASE_ENABLED = os.environ.get('FIREBASE_ENABLED', 'true').lower() == 'true'
+    FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'smartrent-6eadb')
+    FIREBASE_CREDENTIALS_PATH = os.environ.get('FIREBASE_CREDENTIALS_PATH', 'smartrent-firebase-credentials.json')
     
     # MQTT Broker (for IoT devices)
     MQTT_BROKER_URL = os.environ.get('MQTT_BROKER_URL', 'localhost')
