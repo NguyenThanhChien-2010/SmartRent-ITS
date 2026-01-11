@@ -106,7 +106,34 @@ def end_trip(trip_id):
     trip.duration_minutes = duration.total_seconds() / 60
     
     # Calculate cost
-    vehi# Đồng bộ lên Firebase nếu được bật
+    vehicle = Vehicle.query.get(trip.vehicle_id)
+    trip.total_cost = trip.duration_minutes * vehicle.price_per_minute
+    
+    # Update vehicle status
+    vehicle.status = 'available'
+    vehicle.is_locked = True
+    vehicle.odometer += trip.distance_km
+    
+    # Create payment
+    payment_code = f"PAY{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    payment = Payment(
+        payment_code=payment_code,
+        user_id=current_user.id,
+        trip_id=trip.id,
+        amount=trip.total_cost,
+        payment_method='wallet',
+        payment_status='completed',
+        transaction_date=datetime.utcnow()
+    )
+    
+    # Deduct from wallet
+    current_user.wallet_balance -= trip.total_cost
+    
+    try:
+        db.session.add(payment)
+        db.session.commit()
+        
+        # Đồng bộ lên Firebase nếu được bật
         if current_app.config.get('FIREBASE_ENABLED', False):
             # Update trip
             trip_data = {
@@ -156,34 +183,7 @@ def end_trip(trip_id):
         })
     except Exception as e:
         db.session.rollback()
-        print(f'[Error] Ending trip: {e}'etime.now().strftime('%Y%m%d%H%M%S')}"
-    payment = Payment(
-        payment_code=payment_code,
-        user_id=current_user.id,
-        trip_id=trip.id,
-        amount=trip.total_cost,
-        payment_method='wallet',
-        payment_status='completed',
-        transaction_date=datetime.utcnow()
-    )
-    
-    # Deduct from wallet
-    current_user.wallet_balance -= trip.total_cost
-    
-    try:
-        db.session.add(payment)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'trip_code': trip.trip_code,
-            'duration_minutes': round(trip.duration_minutes, 2),
-            'distance_km': trip.distance_km,
-            'total_cost': trip.total_cost,
-            'payment_code': payment_code
-        })
-    except Exception as e:
-        db.session.rollback()
+        print(f'[Error] Ending trip: {e}')
         return jsonify({'error': str(e)}), 500
 
 
@@ -201,16 +201,6 @@ def trip_history():
     # Statistics
     total_trips = Trip.query.filter_by(user_id=current_user.id, status='completed').count()
     total_distance = db.session.query(func.sum(Trip.distance_km))\
-        
-        # Đồng bộ lên Firebase nếu được bật
-        if current_app.config.get('FIREBASE_ENABLED', False):
-            TripRepository.update_fields(str(trip.id), {
-                'rating': trip.rating,
-                'feedback': trip.feedback,
-                'updated_at': datetime.utcnow()
-            })
-            print(f'[Firebase] Feedback for trip {trip.trip_code} synced to Firestore')
-        
         .filter_by(user_id=current_user.id, status='completed').scalar() or 0
     total_spent = db.session.query(func.sum(Trip.total_cost))\
         .filter_by(user_id=current_user.id, status='completed').scalar() or 0
@@ -252,6 +242,16 @@ def submit_feedback(trip_id):
     
     try:
         db.session.commit()
+        
+        # Đồng bộ lên Firebase nếu được bật
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            TripRepository.update_fields(str(trip.id), {
+                'rating': trip.rating,
+                'feedback': trip.feedback,
+                'updated_at': datetime.utcnow()
+            })
+            print(f'[Firebase] Feedback for trip {trip.trip_code} synced to Firestore')
+        
         return jsonify({'success': True, 'message': 'Cảm ơn đánh giá của bạn!'})
     except Exception as e:
         db.session.rollback()
