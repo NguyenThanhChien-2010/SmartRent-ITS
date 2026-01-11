@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}Lập kế hoạch hành trình - SmartRent{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-route"></i> Lập kế hoạch hành trình</h4>
+                </div>
+                <div class="card-body">
+                    <form id="planTripForm">
+                        <div class="mb-3">
+                            <label for="startLocation" class="form-label">
+                                <i class="fas fa-map-marker-alt text-success"></i> Điểm xuất phát
+                            </label>
+                            <input type="text" class="form-control" id="startLocation" placeholder="Nhập địa chỉ xuất phát" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="endLocation" class="form-label">
+                                <i class="fas fa-map-marker-alt text-danger"></i> Điểm đến
+                            </label>
+                            <input type="text" class="form-control" id="endLocation" placeholder="Nhập địa chỉ đến" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="vehicleType" class="form-label">
+                                <i class="fas fa-car"></i> Loại phương tiện
+                            </label>
+                            <select class="form-select" id="vehicleType">
+                                <option value="all">Tất cả</option>
+                                <option value="bike">Xe đạp</option>
+                                <option value="motorbike">Xe máy</option>
+                                <option value="car">Ô tô</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Tìm lộ trình
+                        </button>
+                    </form>
+
+                    <!-- Results -->
+                    <div id="routeResults" class="mt-4 d-none">
+                        <hr>
+                        <h5><i class="fas fa-info-circle"></i> Thông tin lộ trình</h5>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">Khoảng cách</h6>
+                                        <h4 id="routeDistance">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">Thời gian</h6>
+                                        <h4 id="routeDuration">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Warnings -->
+                        <div id="routeWarnings" class="d-none">
+                            <h6><i class="fas fa-exclamation-triangle text-warning"></i> Cảnh báo</h6>
+                            <div id="warningsList"></div>
+                        </div>
+
+                        <!-- Map -->
+                        <div id="routeMap" style="height: 400px; border-radius: 8px;" class="mt-3"></div>
+
+                        <!-- Available Vehicles -->
+                        <div class="mt-3">
+                            <h6><i class="fas fa-car"></i> Xe khả dụng gần điểm xuất phát</h6>
+                            <div id="nearbyVehicles"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let map;
+    let routeLayer;
+
+    document.getElementById('planTripForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const startLocation = document.getElementById('startLocation').value;
+        const endLocation = document.getElementById('endLocation').value;
+        const vehicleType = document.getElementById('vehicleType').value;
+        
+        // Show loading
+        document.getElementById('routeResults').classList.remove('d-none');
+        document.getElementById('routeDistance').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        document.getElementById('routeDuration').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        
+        // For demo: use mock data
+        setTimeout(function() {
+            displayRoute({
+                distance_km: 5.2,
+                duration_minutes: 15,
+                polyline: [],
+                warnings: [
+                    {type: 'traffic', message: 'Tắc đường nhẹ trên đường Nguyễn Huệ'},
+                    {type: 'restricted', message: 'Đường Lê Lợi đang cấm xe từ 7-9h sáng'}
+                ]
+            });
+            
+            // Show nearby vehicles
+            showNearbyVehicles(vehicleType);
+        }, 1000);
+    });
+    
+    function displayRoute(route) {
+        document.getElementById('routeDistance').textContent = route.distance_km + ' km';
+        document.getElementById('routeDuration').textContent = route.duration_minutes + ' phút';
+        
+        // Show warnings
+        if (route.warnings && route.warnings.length > 0) {
+            document.getElementById('routeWarnings').classList.remove('d-none');
+            const warningsList = document.getElementById('warningsList');
+            warningsList.innerHTML = '';
+            
+            route.warnings.forEach(warning => {
+                const alertClass = warning.type === 'traffic' ? 'alert-warning' : 'alert-info';
+                const icon = warning.type === 'traffic' ? 'fa-traffic-light' : 'fa-ban';
+                warningsList.innerHTML += `
+                    <div class="alert ${alertClass} small mb-2">
+                        <i class="fas ${icon}"></i> ${warning.message}
+                    </div>
+                `;
+            });
+        }
+        
+        // Initialize map if not exists
+        if (!map) {
+            map = L.map('routeMap').setView([10.762622, 106.660172], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+        
+        // Add route (demo with straight line)
+        const start = [10.762622, 106.660172];
+        const end = [10.782622, 106.680172];
+        
+        if (routeLayer) {
+            map.removeLayer(routeLayer);
+        }
+        
+        routeLayer = L.polyline([start, end], {
+            color: 'blue',
+            weight: 4,
+            opacity: 0.7
+        }).addTo(map);
+        
+        // Add markers
+        L.marker(start).addTo(map).bindPopup('Điểm xuất phát');
+        L.marker(end).addTo(map).bindPopup('Điểm đến');
+        
+        map.fitBounds([start, end], {padding: [50, 50]});
+    }
+    
+    function showNearbyVehicles(vehicleType) {
+        const container = document.getElementById('nearbyVehicles');
+        container.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Đang tìm xe...';
+        
+        // Demo vehicles
+        setTimeout(function() {
+            container.innerHTML = `
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1"><i class="fas fa-bicycle text-success"></i> Honda Wave Alpha</h6>
+                            <small class="text-muted">0.3 km</small>
+                        </div>
+                        <p class="mb-1 small">Biển số: 51F-12345 • Pin: 95%</p>
+                        <small class="text-primary">500 VND/phút</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1"><i class="fas fa-motorcycle text-info"></i> Yamaha Exciter</h6>
+                            <small class="text-muted">0.5 km</small>
+                        </div>
+                        <p class="mb-1 small">Biển số: 51H-67890 • Pin: 87%</p>
+                        <small class="text-primary">800 VND/phút</small>
+                    </a>
+                </div>
+            `;
+        }, 500);
+    }
+</script>
+{% endblock %}

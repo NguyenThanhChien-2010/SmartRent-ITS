@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Bắt đầu chuyến đi - SmartRent{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-play-circle"></i> Bắt đầu chuyến đi</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Booking Info -->
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> Thông tin đặt xe</h5>
+                        <p class="mb-1"><strong>Mã đặt xe:</strong> {{ booking.booking_code }}</p>
+                        <p class="mb-1"><strong>Phương tiện:</strong> {{ booking.vehicle.brand }} {{ booking.vehicle.model }}</p>
+                        <p class="mb-1"><strong>Biển số:</strong> {{ booking.vehicle.license_plate }}</p>
+                        <p class="mb-0"><strong>Giá:</strong> {{ "{:,.0f}".format(booking.vehicle.price_per_minute) }} VND/phút</p>
+                    </div>
+
+                    <!-- Vehicle Location -->
+                    <div class="mb-3">
+                        <h5><i class="fas fa-map-marker-alt"></i> Vị trí xe</h5>
+                        <div id="map" style="height: 300px; border-radius: 8px;"></div>
+                    </div>
+
+                    <!-- QR Code Scanner -->
+                    <div class="mb-3">
+                        <h5><i class="fas fa-qrcode"></i> Quét mã QR để mở khóa</h5>
+                        <div class="text-center p-4 bg-light rounded">
+                            <div id="qr-scanner" class="mb-3">
+                                <i class="fas fa-qrcode fa-5x text-muted"></i>
+                                <p class="mt-2">Nhấn nút bên dưới để quét mã QR trên xe</p>
+                            </div>
+                            <button id="scanBtn" class="btn btn-primary btn-lg">
+                                <i class="fas fa-camera"></i> Quét mã QR
+                            </button>
+                            
+                            <!-- For demo: Manual unlock -->
+                            <div class="mt-3">
+                                <p class="text-muted small">Hoặc mở khóa trực tiếp (demo):</p>
+                                <button id="unlockBtn" class="btn btn-success">
+                                    <i class="fas fa-unlock"></i> Mở khóa xe
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Start Trip Button (Hidden initially) -->
+                    <div id="startTripSection" class="d-none">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> Xe đã được mở khóa thành công!
+                        </div>
+                        <button id="startTripBtn" class="btn btn-success btn-lg w-100">
+                            <i class="fas fa-play"></i> Bắt đầu hành trình
+                        </button>
+                    </div>
+
+                    <!-- Cancel -->
+                    <div class="mt-3 text-center">
+                        <a href="{{ url_for('vehicle.vehicle_map') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Hủy bỏ
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6><i class="fas fa-info-circle"></i> Hướng dẫn sử dụng</h6>
+                    <ol class="small mb-0">
+                        <li>Đến vị trí xe được hiển thị trên bản đồ</li>
+                        <li>Quét mã QR trên xe để mở khóa (hoặc nhấn nút mở khóa)</li>
+                        <li>Kiểm tra xe và bắt đầu hành trình</li>
+                        <li>Khi kết thúc, nhấn nút "Kết thúc chuyến đi" trong ứng dụng</li>
+                        <li>Khóa xe và đánh giá trải nghiệm của bạn</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew==" crossorigin=""></script>
+<script>
+    // Initialize map with vehicle location
+    const vehicleLat = {{ booking.vehicle.latitude }};
+    const vehicleLng = {{ booking.vehicle.longitude }};
+    
+    const map = L.map('map').setView([vehicleLat, vehicleLng], 16);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add vehicle marker
+    const vehicleIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+    
+    L.marker([vehicleLat, vehicleLng], {icon: vehicleIcon})
+        .addTo(map)
+        .bindPopup('<b>{{ booking.vehicle.vehicle_code }}</b><br>{{ booking.vehicle.brand }} {{ booking.vehicle.model }}')
+        .openPopup();
+    
+    // QR Scanner (demo)
+    document.getElementById('scanBtn').addEventListener('click', function() {
+        alert('Tính năng quét QR đang được phát triển.\nVui lòng sử dụng nút "Mở khóa xe" để demo.');
+    });
+    
+    // Unlock button
+    document.getElementById('unlockBtn').addEventListener('click', function() {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang mở khóa...';
+        
+        // Simulate unlock delay
+        setTimeout(function() {
+            document.getElementById('startTripSection').classList.remove('d-none');
+            btn.innerHTML = '<i class="fas fa-check"></i> Đã mở khóa';
+        }, 1500);
+    });
+    
+    // Start trip button
+    document.getElementById('startTripBtn').addEventListener('click', function() {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang bắt đầu...';
+        
+        // Get current location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                startTrip(position.coords.latitude, position.coords.longitude);
+            }, function(error) {
+                // Use vehicle location if user denies geolocation
+                startTrip(vehicleLat, vehicleLng);
+            });
+        } else {
+            startTrip(vehicleLat, vehicleLng);
+        }
+    });
+    
+    function startTrip(lat, lng) {
+        fetch('{{ url_for("trip.start_trip", booking_id=booking.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                latitude: lat,
+                longitude: lng,
+                address: 'Địa chỉ hiện tại'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Chuyến đi đã bắt đầu!\nMã chuyến đi: ' + data.trip_code);
+                window.location.href = '{{ url_for("trip.trip_history") }}';
+            } else {
+                alert('Lỗi: ' + (data.error || 'Không thể bắt đầu chuyến đi'));
+                document.getElementById('startTripBtn').disabled = false;
+                document.getElementById('startTripBtn').innerHTML = '<i class="fas fa-play"></i> Bắt đầu hành trình';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Lỗi kết nối. Vui lòng thử lại.');
+            document.getElementById('startTripBtn').disabled = false;
+            document.getElementById('startTripBtn').innerHTML = '<i class="fas fa-play"></i> Bắt đầu hành trình';
+        });
+    }
+</script>
+{% endblock %}
