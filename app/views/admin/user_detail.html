@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi tiết người dùng - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="fas fa-user"></i> Chi tiết người dùng</h3>
+        <a href="{{ url_for('admin.manage_users') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Quay lại danh sách
+        </a>
+    </div>
+
+    <!-- User Info Card -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Thông tin cơ bản</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-user-circle fa-5x text-primary"></i>
+                    </div>
+                    
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>ID:</strong></td>
+                            <td>{{ user.id }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Username:</strong></td>
+                            <td><strong>{{ user.username }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Email:</strong></td>
+                            <td>
+                                {{ user.email }}
+                                {% if user.is_verified %}
+                                <i class="fas fa-check-circle text-success" title="Đã xác thực"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Họ tên:</strong></td>
+                            <td>{{ user.full_name or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Số điện thoại:</strong></td>
+                            <td>{{ user.phone or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Vai trò:</strong></td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-crown"></i> Admin
+                                </span>
+                                {% elif user.role == 'operator' %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-user-cog"></i> Operator
+                                </span>
+                                {% else %}
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-user"></i> Customer
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Trạng thái:</strong></td>
+                            <td>
+                                {% if user.is_active %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Hoạt động
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-ban"></i> Vô hiệu hóa
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ngày tạo:</strong></td>
+                            <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M') if user.created_at else '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <!-- Statistics Cards -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h2 class="mb-0">{{ "{:,.0f}".format(user.wallet_balance) }}</h2>
+                            <p class="mb-0">Số dư ví (VND)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h2 class="mb-0">{{ stats.total_trips }}</h2>
+                            <p class="mb-0">Tổng chuyến đi</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h2 class="mb-0">{{ "%.2f"|format(stats.total_distance) }}</h2>
+                            <p class="mb-0">Tổng km đã đi</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <h2 class="mb-0">{{ "{:,.0f}".format(stats.total_spent) }} VND</h2>
+                            <p class="mb-0">Tổng chi tiêu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Trips -->
+            <div class="card shadow mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-route"></i> Chuyến đi gần đây</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Mã</th>
+                                    <th>Xe</th>
+                                    <th>Thời gian</th>
+                                    <th>Khoảng cách</th>
+                                    <th>Chi phí</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trip in recent_trips %}
+                                <tr>
+                                    <td>{{ trip.trip_code }}</td>
+                                    <td>{{ trip.vehicle.vehicle_code }}</td>
+                                    <td>{{ trip.start_time.strftime('%d/%m/%Y %H:%M') if trip.start_time else '-' }}</td>
+                                    <td>{{ "%.2f"|format(trip.distance_km or 0) }} km</td>
+                                    <td>{{ "{:,.0f}".format(trip.total_cost or 0) }} VND</td>
+                                    <td>
+                                        {% if trip.status == 'completed' %}
+                                        <span class="badge bg-success">Hoàn thành</span>
+                                        {% elif trip.status == 'in_progress' %}
+                                        <span class="badge bg-warning">Đang đi</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ trip.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Chưa có chuyến đi nào</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Payments -->
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> Giao dịch gần đây</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Mã</th>
+                                    <th>Loại</th>
+                                    <th>Số tiền</th>
+                                    <th>Phương thức</th>
+                                    <th>Thời gian</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in recent_payments %}
+                                <tr>
+                                    <td>{{ payment.payment_code }}</td>
+                                    <td>
+                                        {% if payment.trip_id %}
+                                        <span class="badge bg-info">Chuyến đi</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Nạp tiền</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ "{:,.0f}".format(payment.amount) }}</strong> VND</td>
+                                    <td>
+                                        {% if payment.payment_method == 'wallet' %}
+                                        <i class="fas fa-wallet"></i> Ví
+                                        {% else %}
+                                        {{ payment.payment_method }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ payment.transaction_date.strftime('%d/%m/%Y %H:%M') if payment.transaction_date else '-' }}</td>
+                                    <td>
+                                        {% if payment.payment_status == 'completed' %}
+                                        <span class="badge bg-success">Thành công</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">{{ payment.payment_status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Chưa có giao dịch nào</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

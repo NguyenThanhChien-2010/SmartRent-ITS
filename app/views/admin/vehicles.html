@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý phương tiện - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="fas fa-car"></i> Quản lý phương tiện</h3>
+        <div>
+            <a href="{{ url_for('admin.add_vehicle') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Thêm xe mới
+            </a>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Quay lại Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Trạng thái</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if status == 'all' %}selected{% endif %}>Tất cả</option>
+                        <option value="available" {% if status == 'available' %}selected{% endif %}>Khả dụng</option>
+                        <option value="in_use" {% if status == 'in_use' %}selected{% endif %}>Đang sử dụng</option>
+                        <option value="maintenance" {% if status == 'maintenance' %}selected{% endif %}>Bảo trì</option>
+                        <option value="offline" {% if status == 'offline' %}selected{% endif %}>Offline</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ vehicles.total }}</h2>
+                    <p class="mb-0">Tổng phương tiện</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ vehicles.items | selectattr('status', 'equalto', 'available') | list | length }}</h2>
+                    <p class="mb-0">Khả dụng</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ vehicles.items | selectattr('status', 'equalto', 'in_use') | list | length }}</h2>
+                    <p class="mb-0">Đang sử dụng</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ vehicles.items | selectattr('status', 'equalto', 'maintenance') | list | length }}</h2>
+                    <p class="mb-0">Bảo trì</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vehicles Table -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Danh sách phương tiện</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Mã xe</th>
+                            <th>Loại</th>
+                            <th>Hãng/Model</th>
+                            <th>Biển số</th>
+                            <th>Vị trí</th>
+                            <th>Pin/Nhiên liệu</th>
+                            <th>Giá</th>
+                            <th>Trạng thái</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vehicle in vehicles.items %}
+                        <tr>
+                            <td><strong>{{ vehicle.vehicle_code }}</strong></td>
+                            <td>
+                                {% if vehicle.vehicle_type == 'bike' %}
+                                <i class="fas fa-bicycle text-info"></i> Xe đạp
+                                {% elif vehicle.vehicle_type == 'motorbike' %}
+                                <i class="fas fa-motorcycle text-primary"></i> Xe máy
+                                {% elif vehicle.vehicle_type == 'car' %}
+                                <i class="fas fa-car text-success"></i> Ô tô
+                                {% else %}
+                                {{ vehicle.vehicle_type }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ vehicle.brand }} {{ vehicle.model }}
+                                <br><small class="text-muted">{{ vehicle.color or 'N/A' }} - {{ vehicle.year or 'N/A' }}</small>
+                            </td>
+                            <td><strong>{{ vehicle.license_plate or '-' }}</strong></td>
+                            <td>
+                                <small>
+                                    {{ "%.6f"|format(vehicle.latitude) }}, {{ "%.6f"|format(vehicle.longitude) }}
+                                </small>
+                            </td>
+                            <td>
+                                {% if vehicle.battery_level %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if vehicle.battery_level > 50 %}bg-success{% elif vehicle.battery_level > 20 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         style="width: {{ vehicle.battery_level }}%">
+                                        {{ "%.0f"|format(vehicle.battery_level) }}%
+                                    </div>
+                                </div>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ "{:,.0f}".format(vehicle.price_per_minute) }}</strong> VND/phút</td>
+                            <td>
+                                {% if vehicle.status == 'available' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Khả dụng
+                                </span>
+                                {% elif vehicle.status == 'in_use' %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-spinner fa-spin"></i> Đang dùng
+                                </span>
+                                {% elif vehicle.status == 'maintenance' %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-wrench"></i> Bảo trì
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ vehicle.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('vehicle.vehicle_detail', vehicle_id=vehicle.id) }}" 
+                                   class="btn btn-sm btn-info" target="_blank">
+                                    <i class="fas fa-eye"></i> Chi tiết
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">
+                                <i class="fas fa-inbox"></i> Chưa có phương tiện nào
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if vehicles.pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if vehicles.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.manage_vehicles', page=vehicles.prev_num, status=status) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in vehicles.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num == vehicles.page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.manage_vehicles', page=page_num, status=status) }}">{{ page_num }}</a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if vehicles.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.manage_vehicles', page=vehicles.next_num, status=status) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
