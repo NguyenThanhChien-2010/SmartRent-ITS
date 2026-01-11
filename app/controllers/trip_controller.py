@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from app.models import db, Trip, Booking, Vehicle, Payment
+from app.utils.repositories import TripRepository, BookingRepository, PaymentRepository, VehicleRepository
 from datetime import datetime, timedelta
 from sqlalchemy import func
 
@@ -39,6 +40,32 @@ def start_trip(booking_id):
         try:
             db.session.add(trip)
             db.session.commit()
+            
+            # Đồng bộ lên Firebase nếu được bật
+            if current_app.config.get('FIREBASE_ENABLED', False):
+                trip_data = {
+                    'trip_code': trip.trip_code,
+                    'user_id': trip.user_id,
+                    'vehicle_id': trip.vehicle_id,
+                    'booking_id': trip.booking_id,
+                    'start_latitude': trip.start_latitude,
+                    'start_longitude': trip.start_longitude,
+                    'start_address': trip.start_address,
+                    'start_time': trip.start_time,
+                    'status': trip.status,
+                    'created_at': trip.created_at,
+                    'updated_at': trip.updated_at
+                }
+                firebase_id = TripRepository.add(trip_data, doc_id=str(trip.id))
+                if firebase_id:
+                    print(f'[Firebase] Trip {trip_code} synced to Firestore: {firebase_id}')
+                
+                # Update booking status
+                BookingRepository.update_fields(str(booking.id), {'status': 'completed'})
+                
+                # Update vehicle status
+                VehicleRepository.update_fields(str(booking.vehicle_id), {'status': 'in_use', 'is_locked': False})
+            
             return jsonify({
                 'success': True,
                 'trip_code': trip_code,
@@ -46,6 +73,7 @@ def start_trip(booking_id):
             })
         except Exception as e:
             db.session.rollback()
+            print(f'[Error] Starting trip: {e}')
             return jsonify({'error': str(e)}), 500
     
     return render_template('trips/start.html', booking=booking)
@@ -78,16 +106,57 @@ def end_trip(trip_id):
     trip.duration_minutes = duration.total_seconds() / 60
     
     # Calculate cost
-    vehicle = Vehicle.query.get(trip.vehicle_id)
-    trip.total_cost = trip.duration_minutes * vehicle.price_per_minute
-    
-    # Update vehicle status
-    vehicle.status = 'available'
-    vehicle.is_locked = True
-    vehicle.odometer += trip.distance_km
-    
-    # Create payment
-    payment_code = f"PAY{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    vehi# Đồng bộ lên Firebase nếu được bật
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            # Update trip
+            trip_data = {
+                'end_time': trip.end_time,
+                'end_latitude': trip.end_latitude,
+                'end_longitude': trip.end_longitude,
+                'end_address': trip.end_address,
+                'distance_km': trip.distance_km,
+                'duration_minutes': trip.duration_minutes,
+                'total_cost': trip.total_cost,
+                'status': 'completed',
+                'updated_at': datetime.utcnow()
+            }
+            TripRepository.update_fields(str(trip.id), trip_data)
+            print(f'[Firebase] Trip {trip.trip_code} updated in Firestore')
+            
+            # Add payment
+            payment_data = {
+                'payment_code': payment.payment_code,
+                'user_id': payment.user_id,
+                'trip_id': payment.trip_id,
+                'amount': payment.amount,
+                'payment_method': payment.payment_method,
+                'payment_status': payment.payment_status,
+                'transaction_date': payment.transaction_date,
+                'created_at': datetime.utcnow()
+            }
+            firebase_payment_id = PaymentRepository.add(payment_data, doc_id=str(payment.id))
+            if firebase_payment_id:
+                print(f'[Firebase] Payment {payment_code} synced to Firestore: {firebase_payment_id}')
+            
+            # Update vehicle status
+            VehicleRepository.update_fields(str(vehicle.id), {
+                'status': 'available',
+                'is_locked': True,
+                'odometer': vehicle.odometer,
+                'updated_at': datetime.utcnow().isoformat()
+            })
+        
+        return jsonify({
+            'success': True,
+            'trip_code': trip.trip_code,
+            'duration_minutes': round(trip.duration_minutes, 2),
+            'distance_km': trip.distance_km,
+            'total_cost': trip.total_cost,
+            'payment_code': payment_code
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f'[Error] Ending trip: {e}'etime.now().strftime('%Y%m%d%H%M%S')}"
     payment = Payment(
         payment_code=payment_code,
         user_id=current_user.id,
@@ -132,6 +201,16 @@ def trip_history():
     # Statistics
     total_trips = Trip.query.filter_by(user_id=current_user.id, status='completed').count()
     total_distance = db.session.query(func.sum(Trip.distance_km))\
+        
+        # Đồng bộ lên Firebase nếu được bật
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            TripRepository.update_fields(str(trip.id), {
+                'rating': trip.rating,
+                'feedback': trip.feedback,
+                'updated_at': datetime.utcnow()
+            })
+            print(f'[Firebase] Feedback for trip {trip.trip_code} synced to Firestore')
+        
         .filter_by(user_id=current_user.id, status='completed').scalar() or 0
     total_spent = db.session.query(func.sum(Trip.total_cost))\
         .filter_by(user_id=current_user.id, status='completed').scalar() or 0

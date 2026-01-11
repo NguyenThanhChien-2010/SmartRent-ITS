@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi tiết chuyến đi - SmartRent{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- Trip Header -->
+            <div class="card shadow mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-route"></i> Chuyến đi #{{ trip.trip_code }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Status Badge -->
+                    <div class="mb-3">
+                        {% if trip.status == 'in_progress' %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="fas fa-spinner fa-spin"></i> Đang diễn ra
+                            </span>
+                        {% elif trip.status == 'completed' %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check-circle"></i> Hoàn thành
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ trip.status }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Trip Info -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-car"></i> Phương tiện</h6>
+                            <p class="mb-1"><strong>{{ trip.vehicle.brand }} {{ trip.vehicle.model }}</strong></p>
+                            <p class="text-muted small mb-0">{{ trip.vehicle.license_plate }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-user"></i> Người dùng</h6>
+                            <p class="mb-0">{{ trip.user.full_name or trip.user.username }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Time Info -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-clock"></i> Thời gian bắt đầu</h6>
+                            <p class="mb-0">{{ trip.start_time.strftime('%d/%m/%Y %H:%M') }}</p>
+                        </div>
+                        {% if trip.end_time %}
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-clock"></i> Thời gian kết thúc</h6>
+                            <p class="mb-0">{{ trip.end_time.strftime('%d/%m/%Y %H:%M') }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if trip.duration_minutes %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-hourglass-half"></i> Thời lượng</h6>
+                            <p class="mb-0">{{ "%.0f"|format(trip.duration_minutes) }} phút</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-road"></i> Quãng đường</h6>
+                            <p class="mb-0">{{ "%.2f"|format(trip.distance_km or 0) }} km</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Cost -->
+                    {% if trip.total_cost %}
+                    <hr>
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="text-primary">
+                                <i class="fas fa-money-bill-wave"></i> Tổng chi phí: 
+                                <strong>{{ "{:,.0f}".format(trip.total_cost) }} VND</strong>
+                            </h5>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Rating -->
+                    {% if trip.rating %}
+                    <hr>
+                    <div class="mb-3">
+                        <h6><i class="fas fa-star"></i> Đánh giá</h6>
+                        <div class="mb-2">
+                            {% for i in range(1, 6) %}
+                                {% if i <= trip.rating %}
+                                    <i class="fas fa-star text-warning"></i>
+                                {% else %}
+                                    <i class="far fa-star text-warning"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if trip.feedback %}
+                        <p class="text-muted small mb-0">{{ trip.feedback }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="mt-3">
+                        {% if trip.status == 'in_progress' %}
+                            <button id="endTripBtn" class="btn btn-danger btn-lg w-100">
+                                <i class="fas fa-stop"></i> Kết thúc chuyến đi
+                            </button>
+                        {% elif trip.status == 'completed' and not trip.rating %}
+                            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#feedbackModal">
+                                <i class="fas fa-star"></i> Đánh giá chuyến đi
+                            </button>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('trip.trip_history') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Quay lại
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Map -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-map"></i> Bản đồ hành trình</h5>
+                </div>
+                <div class="card-body">
+                    <div id="map" style="height: 400px; border-radius: 8px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Modal -->
+{% if trip.status == 'completed' and not trip.rating %}
+<div class="modal fade" id="feedbackModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Đánh giá chuyến đi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Đánh giá của bạn</label>
+                    <div id="ratingStars" class="fs-3">
+                        <i class="far fa-star" data-rating="1"></i>
+                        <i class="far fa-star" data-rating="2"></i>
+                        <i class="far fa-star" data-rating="3"></i>
+                        <i class="far fa-star" data-rating="4"></i>
+                        <i class="far fa-star" data-rating="5"></i>
+                    </div>
+                    <input type="hidden" id="ratingValue" value="0">
+                </div>
+                <div class="mb-3">
+                    <label for="feedbackText" class="form-label">Nhận xét</label>
+                    <textarea id="feedbackText" class="form-control" rows="4" placeholder="Chia sẻ trải nghiệm của bạn..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" id="submitFeedback">Gửi đánh giá</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Initialize map
+    const startLat = {{ trip.start_latitude or 0 }};
+    const startLng = {{ trip.start_longitude or 0 }};
+    const endLat = {{ trip.end_latitude or 0 }};
+    const endLng = {{ trip.end_longitude or 0 }};
+    
+    const map = L.map('map');
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add markers
+    if (startLat && startLng) {
+        const startIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        L.marker([startLat, startLng], {icon: startIcon})
+            .addTo(map)
+            .bindPopup('<b>Điểm xuất phát</b>');
+    }
+    
+    if (endLat && endLng) {
+        const endIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        L.marker([endLat, endLng], {icon: endIcon})
+            .addTo(map)
+            .bindPopup('<b>Điểm kết thúc</b>');
+        
+        // Draw route line
+        L.polyline([[startLat, startLng], [endLat, endLng]], {
+            color: 'blue',
+            weight: 3,
+            opacity: 0.7
+        }).addTo(map);
+        
+        // Fit bounds
+        map.fitBounds([[startLat, startLng], [endLat, endLng]], {padding: [50, 50]});
+    } else {
+        map.setView([startLat, startLng], 15);
+    }
+    
+    // End trip handler
+    const endTripBtn = document.getElementById('endTripBtn');
+    if (endTripBtn) {
+        endTripBtn.addEventListener('click', function() {
+            if (!confirm('Bạn có chắc muốn kết thúc chuyến đi?')) return;
+            
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    endTrip(position.coords.latitude, position.coords.longitude);
+                }, function(error) {
+                    endTrip(startLat, startLng);
+                });
+            } else {
+                endTrip(startLat, startLng);
+            }
+        });
+    }
+    
+    function endTrip(lat, lng) {
+        fetch('{{ url_for("trip.end_trip", trip_id=trip.id) }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                latitude: lat,
+                longitude: lng,
+                address: 'Địa chỉ kết thúc',
+                distance: 5.5
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Chuyến đi đã kết thúc!\nThời gian: ' + data.duration_minutes + ' phút\nChi phí: ' + data.total_cost.toLocaleString() + ' VND');
+                location.reload();
+            } else {
+                alert('Lỗi: ' + (data.error || 'Không thể kết thúc chuyến đi'));
+                endTripBtn.disabled = false;
+                endTripBtn.innerHTML = '<i class="fas fa-stop"></i> Kết thúc chuyến đi';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Lỗi kết nối. Vui lòng thử lại.');
+            endTripBtn.disabled = false;
+            endTripBtn.innerHTML = '<i class="fas fa-stop"></i> Kết thúc chuyến đi';
+        });
+    }
+    
+    // Rating stars
+    const stars = document.querySelectorAll('#ratingStars i');
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            document.getElementById('ratingValue').value = rating;
+            
+            stars.forEach((s, idx) => {
+                if (idx < rating) {
+                    s.classList.remove('far');
+                    s.classList.add('fas', 'text-warning');
+                } else {
+                    s.classList.remove('fas', 'text-warning');
+                    s.classList.add('far');
+                }
+            });
+        });
+        
+        star.addEventListener('mouseenter', function() {
+            const rating = parseInt(this.dataset.rating);
+            stars.forEach((s, idx) => {
+                if (idx < rating) {
+                    s.classList.add('text-warning');
+                }
+            });
+        });
+    });
+    
+    document.getElementById('ratingStars').addEventListener('mouseleave', function() {
+        const currentRating = parseInt(document.getElementById('ratingValue').value);
+        stars.forEach((s, idx) => {
+            if (idx >= currentRating) {
+                s.classList.remove('text-warning');
+            }
+        });
+    });
+    
+    // Submit feedback
+    const submitBtn = document.getElementById('submitFeedback');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+            const rating = parseInt(document.getElementById('ratingValue').value);
+            const feedback = document.getElementById('feedbackText').value;
+            
+            if (rating === 0) {
+                alert('Vui lòng chọn số sao đánh giá');
+                return;
+            }
+            
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang gửi...';
+            
+            fetch('{{ url_for("trip.submit_feedback", trip_id=trip.id) }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({rating: rating, feedback: feedback})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Lỗi: ' + (data.error || 'Không thể gửi đánh giá'));
+                    this.disabled = false;
+                    this.innerHTML = 'Gửi đánh giá';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Lỗi kết nối. Vui lòng thử lại.');
+                this.disabled = false;
+                this.innerHTML = 'Gửi đánh giá';
+            });
+        });
+    }
+</script>
+{% endblock %}
