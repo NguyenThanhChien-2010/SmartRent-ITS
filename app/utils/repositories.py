@@ -231,3 +231,22 @@ class PaymentRepository:
         data = doc.to_dict()
         data['id'] = data.get('id') or doc.id
         return data
+
+    @staticmethod
+    def update_fields(doc_id: str, fields: Dict) -> bool:
+        """Cập nhật payment"""
+        db = get_db()
+        if db is None:
+            return False
+        try:
+            # Convert datetime objects to ISO format strings
+            if 'transaction_date' in fields and isinstance(fields['transaction_date'], datetime):
+                fields['transaction_date'] = fields['transaction_date'].isoformat()
+            if 'updated_at' in fields and isinstance(fields['updated_at'], datetime):
+                fields['updated_at'] = fields['updated_at'].isoformat()
+            
+            db.collection(PaymentRepository.COLLECTION).document(str(doc_id)).set(fields, merge=True)
+            return True
+        except Exception as e:
+            print(f'[PaymentRepository] Error updating payment: {e}')
+            return False

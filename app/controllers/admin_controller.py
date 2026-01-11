@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.models import db, User, Vehicle, Booking, Trip, Payment, Maintenance, EmergencyAlert, IoTLog
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 from functools import wraps
+from app.utils.repositories import VehicleRepository
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -99,6 +100,114 @@ def manage_users():
     return render_template('admin/users.html', users=users)
 
 
+@admin_bp.route('/users/<int:user_id>')
+@login_required
+@admin_required
+def user_detail(user_id):
+    """Chi tiết người dùng"""
+    user = User.query.get_or_404(user_id)
+    
+    # Get user statistics
+    total_trips = Trip.query.filter_by(user_id=user_id, status='completed').count()
+    total_distance = db.session.query(func.sum(Trip.distance_km))\
+        .filter_by(user_id=user_id, status='completed').scalar() or 0
+    total_spent = db.session.query(func.sum(Trip.total_cost))\
+        .filter_by(user_id=user_id, status='completed').scalar() or 0
+    
+    # Recent trips
+    recent_trips = Trip.query.filter_by(user_id=user_id)\
+        .order_by(Trip.created_at.desc())\
+        .limit(10).all()
+    
+    # Recent payments
+    recent_payments = Payment.query.filter_by(user_id=user_id)\
+        .order_by(Payment.created_at.desc())\
+        .limit(10).all()
+    
+    stats = {
+        'total_trips': total_trips,
+        'total_distance': round(total_distance, 2),
+        'total_spent': round(total_spent, 2)
+    }
+    
+    return render_template('admin/user_detail.html', 
+                         user=user, 
+                         stats=stats,
+                         recent_trips=recent_trips,
+                         recent_payments=recent_payments)
+
+
+@admin_bp.route('/trips/today')
+@login_required
+@admin_required
+def today_trips():
+    """Danh sách chuyến đi hôm nay"""
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    trips = Trip.query.filter(Trip.created_at >= today_start)\
+        .order_by(Trip.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Statistics
+    total_today = Trip.query.filter(Trip.created_at >= today_start).count()
+    completed_today = Trip.query.filter(
+        Trip.created_at >= today_start, 
+        Trip.status == 'completed'
+    ).count()
+    in_progress = Trip.query.filter(
+        Trip.created_at >= today_start, 
+        Trip.status == 'in_progress'
+    ).count()
+    
+    stats = {
+        'total': total_today,
+        'completed': completed_today,
+        'in_progress': in_progress
+    }
+    
+    return render_template('admin/today_trips.html', trips=trips, stats=stats)
+
+
+@admin_bp.route('/revenue/today')
+@login_required
+@admin_required
+def today_revenue():
+    """Chi tiết doanh thu hôm nay"""
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    payments = Payment.query.filter(
+        Payment.created_at >= today_start,
+        Payment.payment_status == 'completed'
+    ).order_by(Payment.created_at.desc())\
+     .paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Statistics
+    total_revenue = db.session.query(func.sum(Payment.amount))\
+        .filter(Payment.created_at >= today_start, Payment.payment_status == 'completed')\
+        .scalar() or 0
+    
+    total_payments = Payment.query.filter(
+        Payment.created_at >= today_start,
+        Payment.payment_status == 'completed'
+    ).count()
+    
+    stats = {
+        'total_revenue': total_revenue,
+        'total_payments': total_payments,
+        'average_payment': total_revenue / total_payments if total_payments > 0 else 0
+    }
+    
+    return render_template('admin/today_revenue.html', payments=payments, stats=stats)
+
+
 @admin_bp.route('/vehicles')
 @login_required
 @admin_required
@@ -126,6 +235,13 @@ def add_vehicle():
     if request.method == 'POST':
         data = request.form
         
+        # Kiểm tra biển số đã tồn tại chưa
+        license_plate = data.get('license_plate')
+        existing_vehicle = Vehicle.query.filter_by(license_plate=license_plate).first()
+        if existing_vehicle:
+            flash(f'Biển số "{license_plate}" đã tồn tại! Vui lòng nhập biển số khác.', 'danger')
+            return redirect(url_for('admin.add_vehicle'))
+        
         vehicle_code = f"VH{datetime.now().strftime('%Y%m%d%H%M%S')}"
         
         vehicle = Vehicle(
@@ -133,7 +249,7 @@ def add_vehicle():
             vehicle_type=data.get('vehicle_type'),
             brand=data.get('brand'),
             model=data.get('model'),
-            license_plate=data.get('license_plate'),
+            license_plate=license_plate,
             color=data.get('color'),
             year=data.get('year', type=int),
             latitude=data.get('latitude', type=float),
@@ -147,10 +263,35 @@ def add_vehicle():
         try:
             db.session.add(vehicle)
             db.session.commit()
+            
+            # Sync to Firebase
+            vehicle_data = {
+                'id': vehicle.id,
+                'vehicle_code': vehicle.vehicle_code,
+                'vehicle_type': vehicle.vehicle_type,
+                'brand': vehicle.brand,
+                'model': vehicle.model,
+                'license_plate': vehicle.license_plate,
+                'color': vehicle.color,
+                'year': vehicle.year,
+                'latitude': vehicle.latitude,
+                'longitude': vehicle.longitude,
+                'price_per_minute': vehicle.price_per_minute,
+                'battery_level': vehicle.battery_level,
+                'status': vehicle.status,
+                'qr_code': vehicle.qr_code,
+                'created_at': vehicle.created_at.isoformat() if vehicle.created_at else None
+            }
+            firebase_id = VehicleRepository.add(vehicle_data, doc_id=vehicle.id)
+            print(f"[Firebase] Vehicle {vehicle.vehicle_code} synced to Firestore: {firebase_id}")
+            
+            flash('Thêm phương tiện thành công!', 'success')
             return redirect(url_for('admin.manage_vehicles'))
         except Exception as e:
             db.session.rollback()
-            return f"Error: {str(e)}", 500
+            print(f"[Firebase] Error syncing vehicle: {str(e)}")
+            flash(f'Lỗi: {str(e)}', 'danger')
+            return redirect(url_for('admin.add_vehicle'))
     
     return render_template('admin/add_vehicle.html')
 

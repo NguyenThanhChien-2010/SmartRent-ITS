@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app.models import db, Payment, User
+from app.utils.repositories import PaymentRepository
 from datetime import datetime
 import os
 
@@ -55,6 +56,23 @@ def topup():
             db.session.add(payment)
             db.session.commit()
             
+            # Đồng bộ lên Firebase nếu được bật
+            if current_app.config.get('FIREBASE_ENABLED', False):
+                payment_data = {
+                    'payment_code': payment.payment_code,
+                    'user_id': payment.user_id,
+                    'trip_id': payment.trip_id,
+                    'amount': payment.amount,
+                    'payment_method': payment.payment_method,
+                    'payment_status': payment.payment_status,
+                    'transaction_date': payment.transaction_date,
+                    'transaction_id': payment.transaction_id,
+                    'created_at': datetime.utcnow()
+                }
+                firebase_payment_id = PaymentRepository.add(payment_data, doc_id=str(payment.id))
+                if firebase_payment_id:
+                    print(f'[Firebase] Payment topup {payment_code} synced to Firestore: {firebase_payment_id}')
+            
             return jsonify({
                 'success': True,
                 'message': f'Đã nạp {amount:,.0f} VND vào ví',
@@ -93,6 +111,16 @@ def confirm_payment():
     
     try:
         db.session.commit()
+        
+        # Đồng bộ lên Firebase nếu được bật
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            PaymentRepository.update_fields(str(payment.id), {
+                'payment_status': 'completed',
+                'transaction_date': payment.transaction_date,
+                'updated_at': datetime.utcnow()
+            })
+            print(f'[Firebase] Payment {payment_code} confirmed in Firestore')
+        
         return jsonify({
             'success': True,
             'message': 'Thanh toán thành công',
