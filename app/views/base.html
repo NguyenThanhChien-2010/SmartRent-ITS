@@ -192,6 +192,7 @@
             </li>
 
             {% if current_user.role == 'admin' %}
+            <!-- Admin Dashboard -->
             <li class="nav-item">
               <a
                 class="nav-link px-3"
@@ -199,8 +200,40 @@
                 title="Quản trị"
               >
                 <i class="fas fa-chart-line me-1"></i>
-                <span class="d-none d-lg-inline">Quản trị</span>
+                <span class="d-none d-lg-inline">Dashboard</span>
               </a>
+            </li>
+            
+            <!-- ITS Analytics Dropdown -->
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link dropdown-toggle px-3"
+                href="#"
+                id="itsDropdown"
+                role="button"
+                data-bs-toggle="dropdown"
+              >
+                <i class="fas fa-satellite-dish me-1"></i>
+                <span class="d-none d-lg-inline">ITS Analytics</span>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('admin.iot_monitor') }}">
+                    <i class="fas fa-tv me-2"></i>IoT Monitor Real-time
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('admin.trip_heatmap') }}">
+                    <i class="fas fa-fire me-2"></i>Trip Heatmap
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('admin.analytics') }}">
+                    <i class="fas fa-chart-pie me-2"></i>Analytics
+                  </a>
+                </li>
+              </ul>
             </li>
             {% endif %}
 
