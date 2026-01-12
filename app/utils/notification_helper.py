@@ -85,16 +85,27 @@ def notify_trip_started(user_id, vehicle_code, trip_id):
 
 def notify_trip_completed(user_id, vehicle_code, duration, amount, trip_id):
     """Thông báo hoàn thành chuyến đi"""
+    # Format duration better
+    if duration < 1:
+        seconds = int(duration * 60)
+        duration_text = f"{seconds} giây"
+    elif duration < 60:
+        duration_text = f"{int(duration)} phút"
+    else:
+        hours = int(duration // 60)
+        mins = int(duration % 60)
+        duration_text = f"{hours}h {mins}p"
+    
     return create_notification(
         user_id=user_id,
         type='trip',
         title='Chuyến đi hoàn thành',
-        message=f'Chuyến đi với xe {vehicle_code} đã hoàn thành. Thời gian: {duration} phút. Chi phí: {amount:,.0f} ₫',
+        message=f'Chuyến đi với xe {vehicle_code} đã hoàn thành. Thời gian: {duration_text}. Chi phí: {amount:,.0f} ₫',
         icon='fa-check-circle',
         color='success',
         related_id=trip_id,
         related_type='trip',
-        action_url=f'/trips/detail/{trip_id}'
+        action_url=f'/trips/{trip_id}'
     )
 
 
