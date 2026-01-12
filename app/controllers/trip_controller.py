@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 from flask_login import login_required, current_user
 from app.models import db, Trip, Booking, Vehicle, Payment, User
 from app.utils.repositories import TripRepository, BookingRepository, PaymentRepository, VehicleRepository
+from app.utils.notification_helper import notify_payment_deduct, notify_trip_completed
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import math
@@ -202,6 +203,13 @@ def end_trip(trip_id):
     try:
         db.session.add(payment)
         db.session.commit()
+        
+        # Send notifications
+        try:
+            notify_payment_deduct(current_user.id, trip.total_cost, payment.id)
+            notify_trip_completed(current_user.id, trip.id, trip.duration_minutes, trip.total_cost)
+        except Exception as notif_error:
+            print(f'[Notification] Error: {notif_error}')
         
         # Đồng bộ lên Firebase nếu được bật
         if current_app.config.get('FIREBASE_ENABLED', False):
