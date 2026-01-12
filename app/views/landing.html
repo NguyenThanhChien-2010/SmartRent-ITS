@@ -1,213 +1,281 @@
-{% extends "base.html" %}
-
-{% block title %}SmartRent ITS - Hệ thống thuê xe thông minh{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}SmartRent ITS - Hệ thống thuê xe
+thông minh{% endblock %} {% block content %}
 <!-- Hero Section -->
-<div class="hero-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 100px 0;">
-    <div class="container text-center">
-        <h1 class="display-3 mb-4 fw-bold">🚗 SmartRent ITS</h1>
-        <p class="lead mb-4" style="font-size: 1.5rem;">Hệ thống thuê xe thông minh với IoT & GIS</p>
-        <p class="mb-5">Thuê xe đạp, xe máy, ô tô dễ dàng với công nghệ theo dõi real-time</p>
-        <div>
-            <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-lg me-3">
-                <i class="fas fa-sign-in-alt"></i> Đăng nhập
-            </a>
-            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-user-plus"></i> Đăng ký ngay
-            </a>
-        </div>
+<div
+  class="hero-section"
+  style="
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 100px 0;
+  "
+>
+  <div class="container text-center">
+    <h1 class="display-3 mb-4 fw-bold">SmartRent ITS</h1>
+    <p class="lead mb-4" style="font-size: 1.5rem">
+      Hệ thống thuê xe thông minh với IoT & GIS
+    </p>
+    <p class="mb-5">
+      Thuê xe đạp, xe máy, ô tô dễ dàng với công nghệ theo dõi real-time
+    </p>
+    <div>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-lg me-3">
+        <i class="fas fa-sign-in-alt"></i> Đăng nhập
+      </a>
+      <a
+        href="{{ url_for('auth.register') }}"
+        class="btn btn-outline-light btn-lg"
+      >
+        <i class="fas fa-user-plus"></i> Đăng ký ngay
+      </a>
     </div>
+  </div>
 </div>
 
 <!-- Features Section -->
 <div class="container my-5 py-5">
-    <div class="text-center mb-5">
-        <h2 class="display-5 fw-bold">Tính năng nổi bật</h2>
-        <p class="text-muted">Công nghệ hiện đại cho trải nghiệm tốt nhất</p>
+  <div class="text-center mb-5">
+    <h2 class="display-5 fw-bold">Tính năng nổi bật</h2>
+    <p class="text-muted">Công nghệ hiện đại cho trải nghiệm tốt nhất</p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-map-marked-alt fa-4x text-primary"></i>
+          </div>
+          <h5 class="card-title fw-bold">Bản đồ GIS</h5>
+          <p class="card-text text-muted">
+            Xem vị trí xe real-time trên bản đồ Mapbox. Tìm xe gần nhất trong
+            tích tắc.
+          </p>
+        </div>
+      </div>
     </div>
-    
-    <div class="row g-4">
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-map-marked-alt fa-4x text-primary"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">Bản đồ GIS</h5>
-                    <p class="card-text text-muted">Xem vị trí xe real-time trên bản đồ Mapbox. Tìm xe gần nhất trong tích tắc.</p>
-                </div>
-            </div>
+
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-satellite-dish fa-4x text-success"></i>
+          </div>
+          <h5 class="card-title fw-bold">IoT Tracking</h5>
+          <p class="card-text text-muted">
+            Theo dõi pin, nhiên liệu, vị trí GPS của xe qua cảm biến IoT.
+          </p>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-satellite-dish fa-4x text-success"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">IoT Tracking</h5>
-                    <p class="card-text text-muted">Theo dõi pin, nhiên liệu, vị trí GPS của xe qua cảm biến IoT.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-wallet fa-4x text-warning"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">Ví điện tử</h5>
-                    <p class="card-text text-muted">Nạp tiền, thanh toán nhanh chóng với ví nội bộ an toàn.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-qrcode fa-4x text-info"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">QR Code</h5>
-                    <p class="card-text text-muted">Mở khóa xe bằng QR code, không cần chìa khóa vật lý.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-exclamation-triangle fa-4x text-danger"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">Cảnh báo SOS</h5>
-                    <p class="card-text text-muted">Gửi cảnh báo khẩn cấp khi cần hỗ trợ trong chuyến đi.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body text-center p-4">
-                    <div class="mb-3">
-                        <i class="fas fa-chart-line fa-4x text-purple"></i>
-                    </div>
-                    <h5 class="card-title fw-bold">Phân tích dữ liệu</h5>
-                    <p class="card-text text-muted">Dashboard admin với biểu đồ doanh thu, thống kê chi tiết.</p>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-wallet fa-4x text-warning"></i>
+          </div>
+          <h5 class="card-title fw-bold">Ví điện tử</h5>
+          <p class="card-text text-muted">
+            Nạp tiền, thanh toán nhanh chóng với ví nội bộ an toàn.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-qrcode fa-4x text-info"></i>
+          </div>
+          <h5 class="card-title fw-bold">QR Code</h5>
+          <p class="card-text text-muted">
+            Mở khóa xe bằng QR code, không cần chìa khóa vật lý.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-exclamation-triangle fa-4x text-danger"></i>
+          </div>
+          <h5 class="card-title fw-bold">Cảnh báo SOS</h5>
+          <p class="card-text text-muted">
+            Gửi cảnh báo khẩn cấp khi cần hỗ trợ trong chuyến đi.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-chart-line fa-4x text-purple"></i>
+          </div>
+          <h5 class="card-title fw-bold">Phân tích dữ liệu</h5>
+          <p class="card-text text-muted">
+            Dashboard admin với biểu đồ doanh thu, thống kê chi tiết.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Vehicle Types -->
 <div class="bg-light py-5">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="display-5 fw-bold">Loại xe cho thuê</h2>
-            <p class="text-muted">Chọn phương tiện phù hợp với nhu cầu của bạn</p>
-        </div>
-        
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card border-0 shadow">
-                    <div class="card-body text-center p-4">
-                        <i class="fas fa-bicycle fa-5x text-primary mb-3"></i>
-                        <h4 class="fw-bold">Xe đạp điện</h4>
-                        <p class="text-muted mb-3">Thân thiện môi trường, dễ di chuyển trong phố</p>
-                        <h3 class="text-primary fw-bold">500 VND<small>/phút</small></h3>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="card border-0 shadow">
-                    <div class="card-body text-center p-4">
-                        <i class="fas fa-motorcycle fa-5x text-success mb-3"></i>
-                        <h4 class="fw-bold">Xe máy</h4>
-                        <p class="text-muted mb-3">Linh hoạt, nhanh chóng cho mọi quãng đường</p>
-                        <h3 class="text-success fw-bold">2,000 VND<small>/phút</small></h3>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="card border-0 shadow">
-                    <div class="card-body text-center p-4">
-                        <i class="fas fa-car fa-5x text-info mb-3"></i>
-                        <h4 class="fw-bold">Ô tô</h4>
-                        <p class="text-muted mb-3">Thoải mái, an toàn cho chuyến đi xa</p>
-                        <h3 class="text-info fw-bold">5,000 VND<small>/phút</small></h3>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-5 fw-bold">Loại xe cho thuê</h2>
+      <p class="text-muted">Chọn phương tiện phù hợp với nhu cầu của bạn</p>
     </div>
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card border-0 shadow">
+          <div class="card-body text-center p-4">
+            <i class="fas fa-bicycle fa-5x text-primary mb-3"></i>
+            <h4 class="fw-bold">Xe đạp điện</h4>
+            <p class="text-muted mb-3">
+              Thân thiện môi trường, dễ di chuyển trong phố
+            </p>
+            <h3 class="text-primary fw-bold">500 VND<small>/phút</small></h3>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card border-0 shadow">
+          <div class="card-body text-center p-4">
+            <i class="fas fa-motorcycle fa-5x text-success mb-3"></i>
+            <h4 class="fw-bold">Xe máy</h4>
+            <p class="text-muted mb-3">
+              Linh hoạt, nhanh chóng cho mọi quãng đường
+            </p>
+            <h3 class="text-success fw-bold">2,000 VND<small>/phút</small></h3>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card border-0 shadow">
+          <div class="card-body text-center p-4">
+            <i class="fas fa-car fa-5x text-info mb-3"></i>
+            <h4 class="fw-bold">Ô tô</h4>
+            <p class="text-muted mb-3">Thoải mái, an toàn cho chuyến đi xa</p>
+            <h3 class="text-info fw-bold">5,000 VND<small>/phút</small></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- How it works -->
 <div class="container my-5 py-5">
-    <div class="text-center mb-5">
-        <h2 class="display-5 fw-bold">Cách sử dụng</h2>
-        <p class="text-muted">Chỉ 4 bước đơn giản</p>
+  <div class="text-center mb-5">
+    <h2 class="display-5 fw-bold">Cách sử dụng</h2>
+    <p class="text-muted">Chỉ 4 bước đơn giản</p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-3 text-center">
+      <div class="mb-3">
+        <span
+          class="badge bg-primary"
+          style="
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+            line-height: 60px;
+            border-radius: 50%;
+          "
+          >1</span
+        >
+      </div>
+      <h5 class="fw-bold">Đăng ký tài khoản</h5>
+      <p class="text-muted">Tạo tài khoản miễn phí trong 30 giây</p>
     </div>
-    
-    <div class="row g-4">
-        <div class="col-md-3 text-center">
-            <div class="mb-3">
-                <span class="badge bg-primary" style="width: 60px; height: 60px; font-size: 2rem; line-height: 60px; border-radius: 50%;">1</span>
-            </div>
-            <h5 class="fw-bold">Đăng ký tài khoản</h5>
-            <p class="text-muted">Tạo tài khoản miễn phí trong 30 giây</p>
-        </div>
-        
-        <div class="col-md-3 text-center">
-            <div class="mb-3">
-                <span class="badge bg-success" style="width: 60px; height: 60px; font-size: 2rem; line-height: 60px; border-radius: 50%;">2</span>
-            </div>
-            <h5 class="fw-bold">Nạp tiền vào ví</h5>
-            <p class="text-muted">Nạp tiền vào ví điện tử SmartRent</p>
-        </div>
-        
-        <div class="col-md-3 text-center">
-            <div class="mb-3">
-                <span class="badge bg-warning" style="width: 60px; height: 60px; font-size: 2rem; line-height: 60px; border-radius: 50%;">3</span>
-            </div>
-            <h5 class="fw-bold">Tìm xe trên bản đồ</h5>
-            <p class="text-muted">Chọn xe gần nhất và đặt ngay</p>
-        </div>
-        
-        <div class="col-md-3 text-center">
-            <div class="mb-3">
-                <span class="badge bg-info" style="width: 60px; height: 60px; font-size: 2rem; line-height: 60px; border-radius: 50%;">4</span>
-            </div>
-            <h5 class="fw-bold">Quét QR & Đi!</h5>
-            <p class="text-muted">Quét QR code để mở khóa và bắt đầu</p>
-        </div>
+
+    <div class="col-md-3 text-center">
+      <div class="mb-3">
+        <span
+          class="badge bg-success"
+          style="
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+            line-height: 60px;
+            border-radius: 50%;
+          "
+          >2</span
+        >
+      </div>
+      <h5 class="fw-bold">Nạp tiền vào ví</h5>
+      <p class="text-muted">Nạp tiền vào ví điện tử SmartRent</p>
     </div>
+
+    <div class="col-md-3 text-center">
+      <div class="mb-3">
+        <span
+          class="badge bg-warning"
+          style="
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+            line-height: 60px;
+            border-radius: 50%;
+          "
+          >3</span
+        >
+      </div>
+      <h5 class="fw-bold">Tìm xe trên bản đồ</h5>
+      <p class="text-muted">Chọn xe gần nhất và đặt ngay</p>
+    </div>
+
+    <div class="col-md-3 text-center">
+      <div class="mb-3">
+        <span
+          class="badge bg-info"
+          style="
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+            line-height: 60px;
+            border-radius: 50%;
+          "
+          >4</span
+        >
+      </div>
+      <h5 class="fw-bold">Quét QR & Đi!</h5>
+      <p class="text-muted">Quét QR code để mở khóa và bắt đầu</p>
+    </div>
+  </div>
 </div>
 
 <!-- CTA Section -->
 <div class="bg-primary text-white py-5">
-    <div class="container text-center">
-        <h2 class="display-5 fw-bold mb-4">Sẵn sàng trải nghiệm?</h2>
-        <p class="lead mb-4">Đăng ký ngay hôm nay và nhận 100,000 VND vào ví!</p>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg">
-            <i class="fas fa-rocket"></i> Bắt đầu ngay
-        </a>
-    </div>
+  <div class="container text-center">
+    <h2 class="display-5 fw-bold mb-4">Sẵn sàng trải nghiệm?</h2>
+    <p class="lead mb-4">Đăng ký ngay hôm nay và nhận 100,000 VND vào ví!</p>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg">
+      <i class="fas fa-rocket"></i> Bắt đầu ngay
+    </a>
+  </div>
 </div>
 
 <!-- Demo Credentials -->
 <div class="container my-5">
-    <div class="alert alert-info">
-        <h5><i class="fas fa-info-circle"></i> Tài khoản demo</h5>
-        <p class="mb-0">
-            <strong>Admin:</strong> admin@smartrent.com / admin123<br>
-            <strong>User:</strong> demo@smartrent.com / demo123
-        </p>
-    </div>
+  <div class="alert alert-info">
+    <h5><i class="fas fa-info-circle"></i> Tài khoản demo</h5>
+    <p class="mb-0">
+      <strong>Admin:</strong> admin@smartrent.com / admin123<br />
+      <strong>User:</strong> demo@smartrent.com / demo123
+    </p>
+  </div>
 </div>
 {% endblock %}
