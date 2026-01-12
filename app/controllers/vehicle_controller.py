@@ -181,13 +181,34 @@ def book_vehicle(vehicle_id):
         
         # Mirror to Firestore if enabled
         if current_app.config.get('FIREBASE_ENABLED', False):
-            VehicleRepository.update_fields(vehicle_id, {'status': 'reserved'})
+            print(f"[Booking] Syncing vehicle {vehicle_id} to Firebase...")
+            success = VehicleRepository.update_fields(vehicle_id, {'status': 'reserved'})
+            if success:
+                print(f"[Booking] ✓ Firebase synced: vehicle {vehicle.vehicle_code} → reserved")
+            else:
+                print(f"[Booking] ⚠ Firebase sync returned False")
+            
+            # Also sync trip to Firebase
+            from app.utils.repositories import TripRepository
+            TripRepository.add({
+                'id': trip.id,
+                'trip_code': trip.trip_code,
+                'user_id': trip.user_id,
+                'vehicle_id': trip.vehicle_id,
+                'status': 'pending',
+                'start_latitude': trip.start_latitude,
+                'start_longitude': trip.start_longitude,
+                'start_address': trip.start_address,
+                'created_at': trip.created_at.isoformat(),
+                'updated_at': trip.updated_at.isoformat()
+            }, doc_id=str(trip.id))
+            print(f"[Booking] ✓ Trip {trip.trip_code} synced to Firebase")
         
         return jsonify({
             'success': True,
             'trip_code': trip_code,
             'trip_id': trip.id,
-            'message': 'Đặt xe thành công! Vui lòng quét QR code trong vòng 5 phút.'
+            'message': 'Đặt xe thành công! Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư để nhận mã mở khóa.'
         })
     except Exception as e:
         db.session.rollback()
