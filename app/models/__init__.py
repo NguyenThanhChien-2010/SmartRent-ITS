@@ -163,7 +163,7 @@ class Trip(db.Model):
     end_address = db.Column(db.String(255))
     
     # Time
-    start_time = db.Column(db.DateTime, nullable=False)
+    start_time = db.Column(db.DateTime)  # Nullable, sẽ set khi quét QR
     end_time = db.Column(db.DateTime)
     duration_minutes = db.Column(db.Float)
     
@@ -341,3 +341,41 @@ class IoTLog(db.Model):
     
     def __repr__(self):
         return f'<IoTLog Vehicle:{self.vehicle_id} at {self.timestamp}>'
+
+
+class Notification(db.Model):
+    """Model thông báo chung cho người dùng"""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Foreign Keys
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Notification Info
+    type = db.Column(db.String(50), nullable=False)  # payment, trip, emergency, system, promotion
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    icon = db.Column(db.String(50))  # fa icon class
+    color = db.Column(db.String(20))  # success, danger, warning, info, primary
+    
+    # Related IDs (optional)
+    related_id = db.Column(db.Integer)  # ID của payment, trip, emergency alert, etc.
+    related_type = db.Column(db.String(50))  # payment, trip, emergency_alert, etc.
+    
+    # Link/Action
+    action_url = db.Column(db.String(255))  # URL to redirect when clicked
+    
+    # Status
+    is_read = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False)
+    
+    # Timestamp
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    read_at = db.Column(db.DateTime)
+    
+    # Relationships
+    user = db.relationship('User', backref='notifications')
+    
+    def __repr__(self):
+        return f'<Notification {self.type}: {self.title}>'

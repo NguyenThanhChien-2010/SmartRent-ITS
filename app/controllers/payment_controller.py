@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app.models import db, Payment, User
 from app.utils.repositories import PaymentRepository
+from app.utils.notification_helper import notify_payment_topup
 from datetime import datetime
 import os
 
@@ -55,6 +56,9 @@ def topup():
             
             db.session.add(payment)
             db.session.commit()
+            
+            # Tạo thông báo nạp tiền thành công
+            notify_payment_topup(current_user.id, amount, payment.id)
             
             # Đồng bộ lên Firebase nếu được bật
             if current_app.config.get('FIREBASE_ENABLED', False):
