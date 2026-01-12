@@ -41,6 +41,7 @@ def nearby_vehicles():
     lng = request.args.get('lng', type=float)
     radius = request.args.get('radius', 5, type=float)  # km
     vehicle_type = request.args.get('type', 'all')
+    show_all = request.args.get('show_all', 'false') == 'true'  # Debug mode
     
     if not lat or not lng:
         return jsonify({'error': 'Missing location parameters'}), 400
@@ -48,10 +49,21 @@ def nearby_vehicles():
     vehicles = []
     # If Firebase enabled, use Firestore
     if current_app.config.get('FIREBASE_ENABLED', False):
-        vehicles = VehicleRepository.list_available(vehicle_type)
+        if show_all:
+            # Get all vehicles for debugging
+            from app.models import Vehicle as VehicleModel
+            query = VehicleModel.query
+            if vehicle_type != 'all':
+                query = query.filter_by(vehicle_type=vehicle_type)
+            vehicles = query.all()
+        else:
+            vehicles = VehicleRepository.list_available(vehicle_type)
     else:
         # Query from SQL database
-        query = Vehicle.query.filter_by(status='available')
+        if show_all:
+            query = Vehicle.query
+        else:
+            query = Vehicle.query.filter_by(status='available')
         if vehicle_type != 'all':
             query = query.filter_by(vehicle_type=vehicle_type)
         vehicles = query.all()
@@ -62,6 +74,8 @@ def nearby_vehicles():
         # Support both dict (Firestore) and SQLAlchemy object
         v_lat = vehicle['latitude'] if isinstance(vehicle, dict) else vehicle.latitude
         v_lng = vehicle['longitude'] if isinstance(vehicle, dict) else vehicle.longitude
+        v_status = vehicle.get('status') if isinstance(vehicle, dict) else vehicle.status
+        
         distance = calculate_distance(lat, lng, v_lat, v_lng)
         if distance <= radius:
             nearby.append({
@@ -73,6 +87,7 @@ def nearby_vehicles():
                 'latitude': v_lat,
                 'longitude': v_lng,
                 'distance': round(distance, 2),
+                'status': v_status,  # Add status to response
                 'battery': vehicle.get('battery_level') if isinstance(vehicle, dict) else vehicle.battery_level,
                 'price_per_minute': vehicle.get('price_per_minute') if isinstance(vehicle, dict) else vehicle.price_per_minute,
                 'qr_code': vehicle.get('qr_code') if isinstance(vehicle, dict) else vehicle.qr_code
@@ -81,7 +96,18 @@ def nearby_vehicles():
     # Sort by distance
     nearby.sort(key=lambda x: x['distance'])
     
-    return jsonify({'vehicles': nearby, 'count': len(nearby)})
+    # Count by status
+    status_counts = {}
+    for v in nearby:
+        status = v.get('status', 'unknown')
+        status_counts[status] = status_counts.get(status, 0) + 1
+    
+    return jsonify({
+        'vehicles': nearby, 
+        'count': len(nearby),
+        'status_counts': status_counts,  # Debug info
+        'available_count': status_counts.get('available', 0)
+    })
 
 
 @vehicle_bp.route('/<int:vehicle_id>')
