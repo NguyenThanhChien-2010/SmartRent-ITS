@@ -428,8 +428,8 @@ def end_trip(trip_id):
         
         # Send notifications
         try:
-            notify_payment_deduct(current_user.id, trip.total_cost, payment.id)
-            notify_trip_completed(current_user.id, trip.id, trip.duration_minutes, trip.total_cost)
+            notify_payment_deduct(current_user.id, trip.total_cost, trip.id)
+            notify_trip_completed(current_user.id, vehicle.vehicle_code, trip.duration_minutes, trip.total_cost, trip.id)
         except Exception as notif_error:
             print(f'[Notification] Error: {notif_error}')
         
