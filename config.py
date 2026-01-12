@@ -56,6 +56,10 @@ class Config:
     # Geofencing
     DEFAULT_GEOFENCE_RADIUS = 50  # km
     
+    # Auto-release expired bookings
+    ENABLE_AUTO_RELEASE = os.environ.get('ENABLE_AUTO_RELEASE', 'true').lower() == 'true'
+    AUTO_RELEASE_TIMEOUT_MINUTES = int(os.environ.get('AUTO_RELEASE_TIMEOUT_MINUTES', 5))
+    
     # Vehicle pricing (VND per minute)
     BIKE_PRICE_PER_MINUTE = 500
     MOTORBIKE_PRICE_PER_MINUTE = 2000
