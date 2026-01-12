@@ -132,6 +132,7 @@ def book_vehicle(vehicle_id):
     
     # Create trip with pending status
     trip_code = f"TRIP{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    now = datetime.now()
     trip = Trip(
         trip_code=trip_code,
         user_id=current_user.id,
@@ -139,7 +140,10 @@ def book_vehicle(vehicle_id):
         status='pending',  # waiting for QR scan
         start_latitude=vehicle.latitude,
         start_longitude=vehicle.longitude,
-        start_address=vehicle.address
+        start_address=vehicle.address,
+        start_time=now,  # Set start time when booking
+        created_at=now,
+        updated_at=now
     )
     
     # Reserve vehicle
