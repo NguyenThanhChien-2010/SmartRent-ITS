@@ -4,6 +4,7 @@ from app.models import db, Trip, Booking, Vehicle, Payment, User
 from app.utils.repositories import TripRepository, BookingRepository, PaymentRepository, VehicleRepository
 from app.utils.notification_helper import notify_payment_deduct, notify_trip_completed
 from app.utils.route_optimizer import optimize_route, predict_traffic
+from app.utils.email_helper import generate_otp, verify_otp, send_otp_email, send_unlock_notification
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import math
@@ -66,6 +67,226 @@ def scan_qr(trip_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@trip_bp.route('/<int:trip_id>/iot-unlock', methods=['POST'])
+@login_required
+def iot_unlock(trip_id):
+    """ITS Feature: IoT Remote Unlock - Mở khóa xe từ xa qua mạng IoT"""
+    trip = Trip.query.get_or_404(trip_id)
+    
+    if trip.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized - Không có quyền mở khóa xe này'}), 403
+    
+    if trip.status != 'pending':
+        return jsonify({'error': 'Trip không ở trạng thái chờ'}), 400
+    
+    data = request.get_json()
+    smart_pin = data.get('pin')
+    unlock_method = data.get('method', 'iot_remote')
+    vehicle_code = data.get('vehicle_code')
+    
+    # Verify Smart PIN (last 6 digits of trip code)
+    expected_pin = trip.trip_code[-6:]
+    if smart_pin != expected_pin:
+        return jsonify({'error': 'Smart PIN không hợp lệ'}), 400
+    
+    vehicle = Vehicle.query.get(trip.vehicle_id)
+    
+    # Verify vehicle code matches
+    if vehicle.vehicle_code != vehicle_code:
+        return jsonify({'error': 'Mã xe không khớp'}), 400
+    
+    # IoT Unlock: Update vehicle status
+    vehicle.status = 'in_use'
+    vehicle.lock_status = 'unlocked'
+    vehicle.is_locked = False
+    
+    # Start trip
+    trip.status = 'in_progress'
+    trip.start_time = datetime.utcnow()
+    
+    try:
+        db.session.commit()
+        
+        # Sync to Firebase/IoT platform
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            VehicleRepository.update_fields(vehicle.id, {
+                'status': 'in_use',
+                'lock_status': 'unlocked',
+                'is_locked': False,
+                'last_unlock_method': unlock_method,
+                'last_unlock_time': datetime.utcnow().isoformat()
+            })
+        
+        # TODO: Send MQTT command to physical IoT device
+        # mqtt_client.publish(f'smartrent/vehicle/{vehicle_code}/unlock', {'pin': smart_pin})
+        
+        return jsonify({
+            'success': True,
+            'message': 'Xe đã được mở khóa qua IoT. Chuyến đi bắt đầu!',
+            'method': unlock_method,
+            'vehicle_code': vehicle_code,
+            'trip_code': trip.trip_code
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Lỗi kết nối IoT: {str(e)}'}), 500
+
+
+@trip_bp.route('/<int:trip_id>/send-otp-email', methods=['POST'])
+@login_required
+def send_otp_email_route(trip_id):
+    """ITS Feature: Send OTP via Email for vehicle unlock"""
+    try:
+        trip = Trip.query.get_or_404(trip_id)
+        
+        if trip.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        if trip.status != 'pending':
+            return jsonify({'error': 'Trip không ở trạng thái chờ'}), 400
+        
+        data = request.get_json()
+        trip_code = data.get('trip_code')
+        vehicle_code = data.get('vehicle_code')
+        email = data.get('email') or current_user.email
+        
+        # Generate Smart PIN (last 6 digits of trip code)
+        smart_pin = trip_code[-6:]
+        
+        print(f"[DEBUG] Sending OTP to {email}, PIN: {smart_pin}, Trip: {trip_code}")
+        
+        # Generate and store OTP
+        otp = generate_otp(trip_id, email, smart_pin)
+        
+        # Send OTP email
+        success, message = send_otp_email(email, trip_code, vehicle_code, otp)
+        
+        print(f"[DEBUG] Email send result: success={success}, message={message}")
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'OTP đã được gửi đến email',
+                'email': email,
+                'expires_in': 300  # 5 minutes in seconds
+            })
+        else:
+            return jsonify({'error': message}), 500
+    except Exception as e:
+        print(f"[ERROR] send_otp_email_route: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Lỗi server: {str(e)}'}), 500
+
+
+@trip_bp.route('/<int:trip_id>/verify-otp', methods=['POST'])
+@login_required
+def verify_otp_route(trip_id):
+    """ITS Feature: Verify OTP and unlock vehicle"""
+    try:
+        print(f"[DEBUG] verify-otp called for trip_id={trip_id}")
+        
+        trip = Trip.query.get_or_404(trip_id)
+        
+        if trip.user_id != current_user.id:
+            print(f"[ERROR] Unauthorized: user {current_user.id} != trip.user {trip.user_id}")
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        if trip.status != 'pending':
+            print(f"[ERROR] Trip status is {trip.status}, not pending")
+            return jsonify({'error': 'Trip không ở trạng thái chờ'}), 400
+        
+        data = request.get_json()
+        otp = data.get('otp')
+        vehicle_code = data.get('vehicle_code')
+        
+        print(f"[DEBUG] Verifying OTP: {otp}, vehicle: {vehicle_code}")
+        
+        # Verify OTP
+        is_valid, message = verify_otp(trip_id, otp)
+        
+        print(f"[DEBUG] OTP verification result: valid={is_valid}, msg={message}")
+        
+        if not is_valid:
+            return jsonify({'error': message}), 400
+        
+        # OTP valid - unlock vehicle and start trip
+        vehicle = Vehicle.query.get(trip.vehicle_id)
+        
+        if vehicle.vehicle_code != vehicle_code:
+            print(f"[ERROR] Vehicle code mismatch: {vehicle.vehicle_code} != {vehicle_code}")
+            return jsonify({'error': 'Mã xe không khớp'}), 400
+        
+        print(f"[DEBUG] Updating vehicle and trip status...")
+        
+        # Update vehicle status
+        vehicle.status = 'in_use'
+        vehicle.lock_status = 'unlocked'
+        vehicle.is_locked = False
+        
+        # Start trip
+        trip.status = 'in_progress'
+        trip.start_time = datetime.now()  # Use local time instead of UTC
+        
+        # Commit to database first
+        db.session.commit()
+        print(f"[DEBUG] Database updated successfully")
+        
+        # Sync to Firebase/IoT (don't block on this)
+        try:
+            if current_app.config.get('FIREBASE_ENABLED', False):
+                print(f"[DEBUG] Firebase ENABLED - syncing vehicle {vehicle.id}...")
+                success = VehicleRepository.update_fields(vehicle.id, {
+                    'status': 'in_use',
+                    'lock_status': 'unlocked',
+                    'is_locked': False,
+                    'last_unlock_method': 'email_otp',
+                    'last_unlock_time': datetime.utcnow().isoformat()
+                })
+                if success:
+                    print(f"[DEBUG] ✓ Firebase sync SUCCESS for vehicle {vehicle.vehicle_code}")
+                else:
+                    print(f"[DEBUG] ⚠ Firebase sync returned False")
+                    
+                # Also sync trip to Firebase
+                TripRepository.update_fields(trip.id, {
+                    'status': 'in_progress',
+                    'start_time': trip.start_time.isoformat()
+                })
+                print(f"[DEBUG] ✓ Trip {trip.id} synced to Firebase")
+            else:
+                print(f"[DEBUG] Firebase DISABLED in config")
+        except Exception as firebase_err:
+            print(f"[WARNING] ❌ Firebase sync failed: {firebase_err}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the request if Firebase sync fails
+        
+        # Send unlock notification (don't block on this either)
+        try:
+            print(f"[DEBUG] Sending unlock notification email...")
+            send_unlock_notification(current_user.email, trip.trip_code, vehicle.vehicle_code)
+        except Exception as email_err:
+            print(f"[WARNING] Unlock notification failed: {email_err}")
+        
+        print(f"[DEBUG] Verify OTP complete - returning success")
+        
+        return jsonify({
+            'success': True,
+            'message': 'OTP xác thực thành công! Xe đã mở khóa.',
+            'method': 'email_otp',
+            'vehicle_code': vehicle_code,
+            'trip_code': trip.trip_code
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] verify_otp_route exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Lỗi mở khóa xe: {str(e)}'}), 500
 
 
 def calculate_distance(lat1, lon1, lat2, lon2):
@@ -165,8 +386,8 @@ def end_trip(trip_id):
     
     data = request.get_json()
     
-    # Update trip
-    trip.end_time = datetime.utcnow()
+    # Update trip with local time
+    trip.end_time = datetime.now()  # Use local time instead of UTC
     trip.end_latitude = data.get('latitude')
     trip.end_longitude = data.get('longitude')
     trip.end_address = data.get('address')
@@ -254,6 +475,7 @@ def end_trip(trip_id):
         
         return jsonify({
             'success': True,
+            'trip_id': trip.id,
             'trip_code': trip.trip_code,
             'duration_minutes': round(trip.duration_minutes, 2),
             'distance_km': trip.distance_km,

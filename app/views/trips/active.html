@@ -1,5 +1,13 @@
 {% extends "base.html" %} {% block title %}Chuyến đi của tôi - SmartRent{%
-endblock %} {% block content %}
+endblock %} 
+
+{% block extra_css %}
+<style>
+  /* Force browser to reload this page - version 2.0 */
+</style>
+{% endblock %}
+
+{% block content %}
 <div class="container mt-4">
   <h2><i class="fas fa-route"></i> Chuyến đi của tôi</h2>
   <hr />
@@ -55,27 +63,48 @@ endblock %} {% block content %}
       </div>
 
       {% if trip.status == 'pending' %}
-      <!-- QR Scanner -->
-      <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle"></i> Bạn có
-        <strong>5 phút</strong> để quét QR code và bắt đầu chuyến đi
+      <!-- Email OTP Verification Only -->
+      <div class="alert alert-success border-success mb-3">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-envelope fa-3x text-success me-3"></i>
+          <div>
+            <strong>📧 Kiểm tra Email của bạn!</strong>
+            <p class="mb-0">Mã OTP đã được gửi đến <strong>{{ current_user.email }}</strong></p>
+            <p class="mb-0 small text-muted">Nhập mã OTP từ email để mở khóa xe. Mã có hiệu lực <strong>5 phút</strong>.</p>
+          </div>
+        </div>
       </div>
 
-      <div class="text-center mb-3">
-        <button class="btn btn-primary btn-lg" onclick="startQRScanner()">
-          <i class="fas fa-qrcode"></i> Quét QR Code để mở khóa
-        </button>
-      </div>
-
-      <!-- QR Scanner Video -->
-      <div id="qrScanner" style="display: none">
-        <div class="card">
-          <div class="card-body text-center">
-            <video id="qrVideo" width="100%" style="max-width: 500px"></video>
-            <p class="mt-2">Hướng camera vào QR code trên xe</p>
-            <button class="btn btn-secondary" onclick="stopQRScanner()">
-              Đóng
+      <!-- OTP Verification Form -->
+      <div class="card border-primary mb-3">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Nhập Mã OTP</h5>
+        </div>
+        <div class="card-body">
+          <div class="text-center mb-3">
+            <i class="fas fa-lock fa-4x text-primary mb-3"></i>
+            <h6>Nhập mã OTP 6 số từ email</h6>
+          </div>
+          
+          <div class="input-group input-group-lg mb-3">
+            <span class="input-group-text"><i class="fas fa-key"></i></span>
+            <input type="text" class="form-control text-center fs-3" id="otpInput" 
+                   placeholder="000000" maxlength="6" pattern="[0-9]{6}" 
+                   style="letter-spacing: 10px; font-weight: bold;">
+            <button class="btn btn-success btn-lg" type="button" onclick="verifyOTP()">
+              <i class="fas fa-unlock"></i> Mở khóa xe
             </button>
+          </div>
+          
+          <div class="text-center">
+            <p class="text-muted small mb-2">Chưa nhận được email?</p>
+            <button class="btn btn-outline-primary" onclick="resendOTP()">
+              <i class="fas fa-redo"></i> Gửi lại mã OTP
+            </button>
+          </div>
+          
+          <div id="emailStatus" class="alert mt-3" style="display:none;">
+            <i class="fas fa-info-circle"></i> <span id="emailStatusText"></span>
           </div>
         </div>
       </div>
@@ -136,7 +165,7 @@ endblock %} {% block content %}
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
-  const startTime = new Date('{{ trip.start_time }}');z
+  const startTime = new Date('{{ trip.start_time }}');
   const pricePerMinute = {{ trip.vehicle.price_per_minute }};
   let map, userMarker;
 
@@ -164,18 +193,26 @@ endblock %} {% block content %}
           attribution: '© OpenStreetMap contributors'
       }).addTo(map);
 
-      // Track user location
+      // Track user location (only show current position, don't draw path)
       if (navigator.geolocation) {
-          navigator.geolocation.watchPosition(function(position) {
+          // Get position once on load
+          navigator.geolocation.getCurrentPosition(function(position) {
               const lat = position.coords.latitude;
               const lng = position.coords.longitude;
-
-              if (userMarker) {
-                  userMarker.setLatLng([lat, lng]);
-              } else {
-                  userMarker = L.marker([lat, lng]).addTo(map).bindPopup('Vị trí của bạn');
-                  map.setView([lat, lng], 15);
-              }
+              
+              userMarker = L.marker([lat, lng]).addTo(map).bindPopup('Vị trí bắt đầu');
+              
+              // Add start point marker
+              L.marker([{{ trip.start_latitude }}, {{ trip.start_longitude }}], {
+                  icon: L.icon({
+                      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                      iconSize: [25, 41],
+                      iconAnchor: [12, 41],
+                      popupAnchor: [1, -34],
+                      shadowSize: [41, 41]
+                  })
+              }).addTo(map).bindPopup('Điểm xuất phát');
           });
       }
   });
@@ -207,53 +244,206 @@ endblock %} {% block content %}
   }
 </script>
 {% elif trip and trip.status == 'pending' %}
-<script src="https://unpkg.com/html5-qrcode"></script>
 <script>
-  let html5QrCode;
+  const tripCode = '{{ trip.trip_code }}';
+  
+  // Auto-send OTP email on page load
+  window.addEventListener('DOMContentLoaded', function() {
+    console.log('Auto-sending OTP email...');
+    sendOTPEmail();
+  });
 
-  function startQRScanner() {
-    document.getElementById("qrScanner").style.display = "block";
-
-    html5QrCode = new Html5Qrcode("qrVideo");
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      onScanSuccess,
-      onScanError
-    );
-  }
-
-  function stopQRScanner() {
-    if (html5QrCode) {
-      html5QrCode.stop();
-      document.getElementById("qrScanner").style.display = "none";
-    }
-  }
-
-  function onScanSuccess(decodedText) {
-    console.log("QR Code detected:", decodedText);
-    stopQRScanner();
-
-    // Send QR code to server
-    fetch("/trips/{{ trip.id }}/scan-qr", {
+  function sendOTPEmail() {
+    fetch("/trips/{{ trip.id }}/send-otp-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ qr_code: decodedText }),
+      body: JSON.stringify({ 
+        trip_code: tripCode,
+        vehicle_code: '{{ trip.vehicle.vehicle_code }}',
+        email: '{{ current_user.email }}'
+      }),
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          alert("Mở khóa thành công! Chuyến đi đã bắt đầu.");
-          location.reload();
-        } else {
-          alert("Lỗi: " + data.error);
-          startQRScanner();
-        }
-      });
+    .then((response) => response.json())
+    .then((data) => {
+      console.log('Email sent:', data);
+      if (!data.success) {
+        const emailStatusDiv = document.getElementById('emailStatus');
+        emailStatusDiv.className = 'alert alert-warning';
+        emailStatusDiv.style.display = 'block';
+        document.getElementById('emailStatusText').innerHTML = '⚠️ Email chưa được gửi: ' + (data.error || 'Lỗi không xác định');
+      }
+    })
+    .catch(error => {
+      console.error('Email error:', error);
+    });
   }
 
-  function onScanError(error) {
-    // Ignore scan errors
+  function resendOTP() {
+    const btn = event.target;
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang gửi...';
+    
+    const emailStatusDiv = document.getElementById('emailStatus');
+    const emailStatusText = document.getElementById('emailStatusText');
+    
+    fetch("/trips/{{ trip.id }}/send-otp-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        trip_code: tripCode,
+        vehicle_code: '{{ trip.vehicle.vehicle_code }}',
+        email: '{{ current_user.email }}'
+      }),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        emailStatusDiv.className = 'alert alert-success';
+        emailStatusDiv.style.display = 'block';
+        emailStatusText.innerHTML = '✓ OTP mới đã được gửi đến <strong>' + data.email + '</strong>!';
+        
+        btn.innerHTML = '<i class="fas fa-check"></i> Đã gửi';
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+          btn.disabled = false;
+          emailStatusDiv.style.display = 'none';
+        }, 3000);
+      } else {
+        emailStatusDiv.className = 'alert alert-danger';
+        emailStatusDiv.style.display = 'block';
+        emailStatusText.textContent = '✗ Lỗi: ' + (data.error || 'Không thể gửi email');
+        
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+      }
+    })
+    .catch(error => {
+      emailStatusDiv.className = 'alert alert-danger';
+      emailStatusDiv.style.display = 'block';
+      emailStatusText.textContent = '✗ Lỗi mạng: ' + error.message;
+      
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+    });
+  }
+
+  function verifyOTP() {
+    const otpInput = document.getElementById('otpInput');
+    const otp = otpInput.value.trim();
+
+    if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+      alert('Vui lòng nhập đúng 6 chữ số OTP');
+      otpInput.focus();
+      return;
+    }
+
+    const btn = event.target;
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang mở khóa...';
+
+    // Get or create status elements
+    let statusDiv = document.getElementById('emailStatus');
+    let statusText = document.getElementById('emailStatusText');
+    
+    // If elements don't exist (due to browser cache), create them dynamically
+    if (!statusDiv || !statusText) {
+      console.warn('⚠️ Status elements not found in DOM, creating dynamically...');
+      
+      // Find the OTP input's parent container
+      const otpContainer = otpInput.closest('.card-body');
+      
+      if (otpContainer) {
+        // Create status div if it doesn't exist
+        if (!statusDiv) {
+          statusDiv = document.createElement('div');
+          statusDiv.id = 'emailStatus';
+          statusDiv.className = 'alert mt-3';
+          statusDiv.style.display = 'none';
+          otpContainer.appendChild(statusDiv);
+        }
+        
+        // Create status text span if it doesn't exist
+        if (!statusText) {
+          statusText = document.createElement('span');
+          statusText.id = 'emailStatusText';
+          statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> ';
+          statusDiv.appendChild(statusText);
+        }
+        
+        console.log('✓ Status elements created dynamically');
+      } else {
+        // Fallback: use alert if can't create elements
+        console.error('❌ Cannot create status elements, using alert fallback');
+      }
+    }
+    
+    // Show loading status (or fallback to console)
+    if (statusDiv && statusText) {
+      statusDiv.style.display = 'block';
+      statusDiv.className = 'alert alert-info mt-3';
+      statusText.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Đang xác thực OTP...';
+    } else {
+      console.log('🔄 Verifying OTP...');
+    }
+
+    fetch("/trips/{{ trip.id }}/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        otp: otp,
+        vehicle_code: '{{ trip.vehicle.vehicle_code }}'
+      }),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        // Success
+        if (statusDiv && statusText) {
+          statusDiv.className = 'alert alert-success mt-3';
+          statusText.innerHTML = '✓ Xác thực thành công! Xe đã mở khóa, chuyến đi bắt đầu...';
+        } else {
+          alert('✓ Xác thực thành công! Xe đã mở khóa, chuyến đi bắt đầu...');
+        }
+        
+        setTimeout(() => {
+          location.reload();
+        }, 2000);
+      } else {
+        // Error
+        if (statusDiv && statusText) {
+          statusDiv.className = 'alert alert-danger mt-3';
+          statusText.textContent = '❌ ' + (data.error || 'OTP không hợp lệ hoặc đã hết hạn');
+        } else {
+          alert('❌ ' + (data.error || 'OTP không hợp lệ hoặc đã hết hạn'));
+        }
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        otpInput.value = '';
+        otpInput.focus();
+      }
+    })
+    .catch(error => {
+      // Network error
+      if (statusDiv && statusText) {
+        statusDiv.className = 'alert alert-danger mt-3';
+        statusText.textContent = '❌ Lỗi kết nối: ' + error.message;
+      } else {
+        alert('❌ Lỗi kết nối: ' + error.message);
+      }
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+    });
+  }
+
+  // Auto-focus OTP input and restrict to numbers only
+  const otpInputElement = document.getElementById('otpInput');
+  if (otpInputElement) {
+    otpInputElement.focus();
+    otpInputElement.addEventListener('input', function(e) {
+      e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
   }
 </script>
 {% endif %} {% endblock %}
