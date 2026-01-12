@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Thông báo - SmartRent{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-bell"></i> Thông báo</h2>
+        {% if unread > 0 %}
+        <button class="btn btn-outline-primary" onclick="markAllAsRead()">
+          <i class="fas fa-check-double"></i> Đánh dấu tất cả đã đọc
+        </button>
+        {% endif %}
+      </div>
+
+      <!-- Stats -->
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <div class="card text-center">
+            <div class="card-body">
+              <i class="fas fa-inbox fa-2x text-primary mb-2"></i>
+              <h3>{{ total }}</h3>
+              <small class="text-muted">Tổng thông báo</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center">
+            <div class="card-body">
+              <i class="fas fa-envelope fa-2x text-danger mb-2"></i>
+              <h3>{{ unread }}</h3>
+              <small class="text-muted">Chưa đọc</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center">
+            <div class="card-body">
+              <i class="fas fa-envelope-open fa-2x text-success mb-2"></i>
+              <h3>{{ total - unread }}</h3>
+              <small class="text-muted">Đã đọc</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="btn-group" role="group">
+            <a href="{{ url_for('notification.list_notifications', status='all') }}" 
+               class="btn btn-sm {% if status_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+              <i class="fas fa-list"></i> Tất cả
+            </a>
+            <a href="{{ url_for('notification.list_notifications', status='unread') }}" 
+               class="btn btn-sm {% if status_filter == 'unread' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+              <i class="fas fa-envelope"></i> Chưa đọc
+            </a>
+            <a href="{{ url_for('notification.list_notifications', status='read') }}" 
+               class="btn btn-sm {% if status_filter == 'read' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+              <i class="fas fa-envelope-open"></i> Đã đọc
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications List -->
+      {% if notifications.items %}
+      <div class="list-group">
+        {% for notif in notifications.items %}
+        <a href="{{ notif.action_url or '#' }}" 
+           class="list-group-item list-group-item-action {% if not notif.is_read %}list-group-item-light border-start border-primary border-3{% endif %}"
+           data-notification-id="{{ notif.id }}"
+           data-is-read="{{ notif.is_read|lower }}">
+          <div class="d-flex w-100 justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas {{ notif.icon or 'fa-bell' }} fa-lg text-{{ notif.color or 'secondary' }} me-3"></i>
+                <div>
+                  <h6 class="mb-1">
+                    {{ notif.title }}
+                    {% if not notif.is_read %}
+                    <span class="badge bg-primary ms-2">Mới</span>
+                    {% endif %}
+                  </h6>
+                  <p class="mb-1">{{ notif.message }}</p>
+                  <small class="text-muted">
+                    <i class="fas fa-clock"></i> {{ notif.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    {% if notif.is_read and notif.read_at %}
+                    · Đã đọc: {{ notif.read_at.strftime('%d/%m/%Y %H:%M') }}
+                    {% endif %}
+                  </small>
+                </div>
+              </div>
+            </div>
+            <div class="ms-3">
+              <button class="btn btn-sm btn-outline-danger" 
+                      onclick="deleteNotification(event, {{ notif.id }})"
+                      title="Xóa">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if notifications.pages > 1 %}
+      <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+          {% if notifications.has_prev %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('notification.list_notifications', page=notifications.prev_num, status=status_filter) }}">
+              Trước
+            </a>
+          </li>
+          {% endif %}
+          
+          {% for page_num in notifications.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if page_num %}
+              <li class="page-item {% if page_num == notifications.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('notification.list_notifications', page=page_num, status=status_filter) }}">
+                  {{ page_num }}
+                </a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+          {% endfor %}
+          
+          {% if notifications.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('notification.list_notifications', page=notifications.next_num, status=status_filter) }}">
+              Tiếp
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+
+      {% else %}
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+          <h4>Không có thông báo</h4>
+          <p class="text-muted">
+            {% if status_filter == 'unread' %}
+            Bạn đã đọc tất cả thông báo
+            {% elif status_filter == 'read' %}
+            Chưa có thông báo nào được đọc
+            {% else %}
+            Bạn chưa có thông báo nào
+            {% endif %}
+          </p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function deleteNotification(event, notifId) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!confirm('Xóa thông báo này?')) {
+      return;
+    }
+    
+    fetch(`/notifications/${notifId}/delete`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Lỗi: ' + (data.error || 'Không thể xóa'));
+      }
+    })
+    .catch(error => {
+      alert('Lỗi kết nối: ' + error.message);
+    });
+  }
+</script>
+{% endblock %}
