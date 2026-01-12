@@ -34,6 +34,7 @@ paho-mqtt==1.6.1
 # API & Web Services
 requests==2.31.0
 Flask-CORS==4.0.0
+Flask-SocketIO>=5.3.0
 # Flask-RESTful==0.3.10  # Optional
 
 # Background Tasks (Optional - có thể bỏ cho demo)
