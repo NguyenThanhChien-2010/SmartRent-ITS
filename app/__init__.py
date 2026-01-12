@@ -44,6 +44,7 @@ def create_app(config_name='development'):
     from app.controllers.payment_controller import payment_bp
     from app.controllers.admin_controller import admin_bp
     from app.controllers.emergency_controller import emergency_bp
+    from app.controllers.notification_controller import notification_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -52,6 +53,7 @@ def create_app(config_name='development'):
     app.register_blueprint(payment_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(emergency_bp)
+    app.register_blueprint(notification_bp)
     
     # Create tables
     with app.app_context():

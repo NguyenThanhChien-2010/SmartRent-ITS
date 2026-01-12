@@ -123,6 +123,8 @@
                   <a
                     class="dropdown-item {% if not notif.is_read %}bg-light{% endif %} py-2"
                     href="{{ notif.action_url or '#' }}"
+                    data-notification-id="{{ notif.id }}"
+                    data-is-read="{{ notif.is_read|lower }}"
                   >
                     <div class="d-flex align-items-start">
                       <i
@@ -158,13 +160,19 @@
                 </li>
                 {% endif %}
                 <li><hr class="dropdown-divider" /></li>
-                <li>
-                  <a
-                    class="dropdown-item text-center small text-primary"
-                    href="#"
-                  >
-                    Xem tất cả thông báo
-                  </a>
+                
+                <!-- Action Buttons -->
+                <li class="px-3 py-2">
+                  <div class="d-grid gap-2">
+                    {% if unread_count > 0 %}
+                    <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()">
+                      <i class="fas fa-check-double"></i> Đánh dấu tất cả đã đọc
+                    </button>
+                    {% endif %}
+                    <a href="/notifications" class="btn btn-sm btn-primary">
+                      <i class="fas fa-list"></i> Xem tất cả thông báo
+                    </a>
+                  </div>
                 </li>
               </ul>
             </li>
@@ -385,6 +393,53 @@
 
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <!-- Notification Functions -->
+    <script>
+      function markAllAsRead() {
+        if (!confirm('Đánh dấu tất cả thông báo đã đọc?')) {
+          return;
+        }
+        
+        fetch('/notifications/mark-all-read', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Reload to update badge count
+            location.reload();
+          } else {
+            alert('Lỗi: ' + (data.error || 'Không thể đánh dấu'));
+          }
+        })
+        .catch(error => {
+          alert('Lỗi kết nối: ' + error.message);
+        });
+      }
+      
+      // Auto-mark notification as read when clicked
+      document.addEventListener('DOMContentLoaded', function() {
+        const notifItems = document.querySelectorAll('[data-notification-id]');
+        notifItems.forEach(item => {
+          item.addEventListener('click', function(e) {
+            const notifId = this.dataset.notificationId;
+            const isRead = this.dataset.isRead === 'true';
+            
+            if (!isRead && notifId) {
+              // Mark as read in background
+              fetch(`/notifications/${notifId}/mark-read`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+              });
+            }
+          });
+        });
+      });
+    </script>
 
     {% block extra_js %}{% endblock %}
   </body>
