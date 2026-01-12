@@ -142,14 +142,21 @@ def user_detail(user_id):
 @admin_required
 def today_trips():
     """Danh sách chuyến đi hôm nay"""
-    today = datetime.utcnow().date()
+    today = datetime.now().date()  # Use local time instead of UTC
     today_start = datetime.combine(today, datetime.min.time())
     
     page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', 'all')
     per_page = 50
     
-    trips = Trip.query.filter(Trip.created_at >= today_start)\
-        .order_by(Trip.created_at.desc())\
+    # Base query
+    query = Trip.query.filter(Trip.created_at >= today_start)
+    
+    # Apply status filter
+    if status_filter != 'all':
+        query = query.filter(Trip.status == status_filter)
+    
+    trips = query.order_by(Trip.created_at.desc())\
         .paginate(page=page, per_page=per_page, error_out=False)
     
     # Statistics
@@ -162,14 +169,27 @@ def today_trips():
         Trip.created_at >= today_start, 
         Trip.status == 'in_progress'
     ).count()
+    pending = Trip.query.filter(
+        Trip.created_at >= today_start,
+        Trip.status == 'pending'
+    ).count()
+    cancelled = Trip.query.filter(
+        Trip.created_at >= today_start,
+        Trip.status == 'cancelled'
+    ).count()
     
     stats = {
         'total': total_today,
         'completed': completed_today,
-        'in_progress': in_progress
+        'in_progress': in_progress,
+        'pending': pending,
+        'cancelled': cancelled
     }
     
-    return render_template('admin/today_trips.html', trips=trips, stats=stats)
+    return render_template('admin/today_trips.html', 
+                         trips=trips, 
+                         stats=stats, 
+                         status_filter=status_filter)
 
 
 @admin_bp.route('/revenue/today')
@@ -512,3 +532,118 @@ def trip_heatmap():
     return render_template('admin/heatmap.html',
                          heatmap_data=heatmap_data,
                          mapbox_token=mapbox_token)
+
+
+@admin_bp.route('/vehicles/fix-orphaned', methods=['POST'])
+@login_required
+@admin_required
+def fix_orphaned_vehicles():
+    """Fix vehicles that are 'in_use' but have no active trip"""
+    try:
+        # Find orphaned vehicles
+        orphaned = []
+        in_use_vehicles = Vehicle.query.filter_by(status='in_use').all()
+        
+        for v in in_use_vehicles:
+            active_trip = Trip.query.filter_by(
+                vehicle_id=v.id,
+                status='in_progress'
+            ).first()
+            
+            if not active_trip:
+                orphaned.append(v)
+                # Fix: Set back to available
+                v.status = 'available'
+                v.lock_status = 'locked'
+                v.is_locked = True
+        
+        if not orphaned:
+            return jsonify({
+                'success': True,
+                'message': 'No orphaned vehicles found',
+                'fixed_count': 0
+            })
+        
+        # Commit changes
+        db.session.commit()
+        
+        # Sync to Firebase
+        from flask import current_app
+        if current_app.config.get('FIREBASE_ENABLED', False):
+            for v in orphaned:
+                VehicleRepository.update_fields(v.id, {
+                    'status': 'available',
+                    'lock_status': 'locked',
+                    'is_locked': True
+                })
+        
+        return jsonify({
+            'success': True,
+            'message': f'Fixed {len(orphaned)} orphaned vehicles',
+            'fixed_count': len(orphaned),
+            'vehicles': [v.vehicle_code for v in orphaned]
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@admin_bp.route('/system/check-consistency', methods=['GET'])
+@login_required
+@admin_required
+def check_system_consistency():
+    """Check data consistency between vehicles and trips"""
+    # Check orphaned vehicles
+    orphaned_vehicles = []
+    in_use_vehicles = Vehicle.query.filter_by(status='in_use').all()
+    
+    for v in in_use_vehicles:
+        active_trip = Trip.query.filter_by(
+            vehicle_id=v.id,
+            status='in_progress'
+        ).first()
+        
+        if not active_trip:
+            orphaned_vehicles.append({
+                'id': v.id,
+                'code': v.vehicle_code,
+                'status': v.status
+            })
+    
+    # Check orphaned trips
+    orphaned_trips = []
+    active_trips = Trip.query.filter_by(status='in_progress').all()
+    
+    for t in active_trips:
+        v = Vehicle.query.get(t.vehicle_id)
+        if v and v.status != 'in_use':
+            orphaned_trips.append({
+                'id': t.id,
+                'code': t.trip_code,
+                'vehicle_code': v.vehicle_code,
+                'vehicle_status': v.status
+            })
+    
+    # Vehicle status summary
+    vehicle_status = {}
+    for v in Vehicle.query.all():
+        vehicle_status[v.status] = vehicle_status.get(v.status, 0) + 1
+    
+    # Trip status summary
+    today = datetime.now().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    trip_status = {}
+    for t in Trip.query.filter(Trip.created_at >= today_start).all():
+        trip_status[t.status] = trip_status.get(t.status, 0) + 1
+    
+    return jsonify({
+        'vehicle_status': vehicle_status,
+        'trip_status': trip_status,
+        'orphaned_vehicles': orphaned_vehicles,
+        'orphaned_trips': orphaned_trips,
+        'is_consistent': len(orphaned_vehicles) == 0 and len(orphaned_trips) == 0
+    })
