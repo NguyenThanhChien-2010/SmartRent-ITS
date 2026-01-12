@@ -1,185 +1,201 @@
-{% extends "base.html" %}
-
-{% block title %}Chi tiết xe - SmartRent{% endblock %}
-
+{% extends "base.html" %} {% block title %}Chi tiết xe - SmartRent{% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4><i class="fas fa-car"></i> {{ vehicle.brand }} {{ vehicle.model }}</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h5>Thông tin xe</h5>
-                            <table class="table">
-                                <tr>
-                                    <td><strong>Mã xe:</strong></td>
-                                    <td>{{ vehicle.vehicle_code }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Loại xe:</strong></td>
-                                    <td>
-                                        {% if vehicle.vehicle_type == 'bike' %}
-                                            <i class="fas fa-bicycle"></i> Xe đạp điện
-                                        {% elif vehicle.vehicle_type == 'motorbike' %}
-                                            <i class="fas fa-motorcycle"></i> Xe máy
-                                        {% else %}
-                                            <i class="fas fa-car"></i> Ô tô
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Biển số:</strong></td>
-                                    <td>{{ vehicle.license_plate or 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Màu sắc:</strong></td>
-                                    <td>{{ vehicle.color }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Năm sản xuất:</strong></td>
-                                    <td>{{ vehicle.year }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Giá thuê:</strong></td>
-                                    <td><strong class="text-success">{{ "{:,.0f}".format(vehicle.price_per_minute) }} VND/phút</strong></td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h5>Trạng thái xe</h5>
-                            <table class="table">
-                                <tr>
-                                    <td><strong>Trạng thái:</strong></td>
-                                    <td>
-                                        {% if vehicle.status == 'available' %}
-                                            <span class="badge bg-success">Có sẵn</span>
-                                        {% elif vehicle.status == 'in_use' %}
-                                            <span class="badge bg-warning">Đang sử dụng</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Bảo trì</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Pin/Nhiên liệu:</strong></td>
-                                    <td>
-                                        {% if vehicle.battery_level %}
-                                            <div class="progress">
-                                                <div class="progress-bar bg-success" style="width: {{ vehicle.battery_level }}%">
-                                                    {{ vehicle.battery_level }}%
-                                                </div>
-                                            </div>
-                                        {% elif vehicle.fuel_level %}
-                                            <div class="progress">
-                                                <div class="progress-bar bg-info" style="width: {{ vehicle.fuel_level }}%">
-                                                    {{ vehicle.fuel_level }}%
-                                                </div>
-                                            </div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Quãng đường:</strong></td>
-                                    <td>{{ "{:,.0f}".format(vehicle.odometer) }} km</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Tổng chuyến đi:</strong></td>
-                                    <td>{{ total_trips }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Tổng km đã chạy:</strong></td>
-                                    <td>{{ total_distance }} km</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h4>
+            <i class="fas fa-car"></i> {{ vehicle.brand }} {{ vehicle.model }}
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Thông tin xe</h5>
+              <table class="table">
+                <tr>
+                  <td><strong>Mã xe:</strong></td>
+                  <td>{{ vehicle.vehicle_code }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Loại xe:</strong></td>
+                  <td>
+                    {% if vehicle.vehicle_type == 'bike' %}
+                    <i class="fas fa-bicycle"></i> Xe đạp điện {% elif
+                    vehicle.vehicle_type == 'motorbike' %}
+                    <i class="fas fa-motorcycle"></i> Xe máy {% else %}
+                    <i class="fas fa-car"></i> Ô tô {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Biển số:</strong></td>
+                  <td>{{ vehicle.license_plate or 'N/A' }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Màu sắc:</strong></td>
+                  <td>{{ vehicle.color }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Năm sản xuất:</strong></td>
+                  <td>{{ vehicle.year }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Giá thuê:</strong></td>
+                  <td>
+                    <strong class="text-success"
+                      >{{ "{:,.0f}".format(vehicle.price_per_minute) }}
+                      VND/phút</strong
+                    >
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <h5>Trạng thái xe</h5>
+              <table class="table">
+                <tr>
+                  <td><strong>Trạng thái:</strong></td>
+                  <td>
                     {% if vehicle.status == 'available' %}
-                    <div class="mt-4 text-center">
-                        <button class="btn btn-success btn-lg" id="bookVehicleBtn">
-                            <i class="fas fa-check-circle"></i> Đặt xe ngay
-                        </button>
-                        <div class="mt-2 text-muted">
-                            <small>Ước tính 1 giờ: {{ "{:,.0f}".format(vehicle.price_per_minute * 60) }} VND</small>
-                        </div>
+                    <span class="badge bg-success">Có sẵn</span>
+                    {% elif vehicle.status == 'in_use' %}
+                    <span class="badge bg-warning">Đang sử dụng</span>
+                    {% else %}
+                    <span class="badge bg-danger">Bảo trì</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Pin/Nhiên liệu:</strong></td>
+                  <td>
+                    {% if vehicle.battery_level %}
+                    <div class="progress">
+                      <div
+                        class="progress-bar bg-success"
+                        style="width: {{ vehicle.battery_level }}%"
+                      >
+                        {{ vehicle.battery_level }}%
+                      </div>
+                    </div>
+                    {% elif vehicle.fuel_level %}
+                    <div class="progress">
+                      <div
+                        class="progress-bar bg-info"
+                        style="width: {{ vehicle.fuel_level }}%"
+                      >
+                        {{ vehicle.fuel_level }}%
+                      </div>
                     </div>
                     {% endif %}
-                </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Quãng đường:</strong></td>
+                  <td>{{ "{:,.0f}".format(vehicle.odometer) }} km</td>
+                </tr>
+                <tr>
+                  <td><strong>Tổng chuyến đi:</strong></td>
+                  <td>{{ total_trips }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Tổng km đã chạy:</strong></td>
+                  <td>{{ total_distance }} km</td>
+                </tr>
+              </table>
             </div>
+          </div>
+
+          {% if vehicle.status == 'available' %}
+          <div class="mt-4 text-center">
+            <button class="btn btn-success btn-lg" id="bookVehicleBtn">
+              <i class="fas fa-check-circle"></i> Đặt xe ngay
+            </button>
+            <div class="mt-2 text-muted">
+              <small
+                >Ước tính 1 giờ: {{ "{:,.0f}".format(vehicle.price_per_minute *
+                60) }} VND</small
+              >
+            </div>
+          </div>
+          {% endif %}
         </div>
-        
-        <div class="col-md-4">
-            <!-- Map -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h6><i class="fas fa-map-marker-alt"></i> Vị trí xe</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div id="vehicleMap" style="height: 300px;"></div>
-                </div>
-                <div class="card-footer">
-                    <small class="text-muted">{{ vehicle.address }}</small>
-                </div>
-            </div>
-            
-            <!-- QR Code -->
-            <div class="card">
-                <div class="card-header">
-                    <h6><i class="fas fa-qrcode"></i> Mã QR</h6>
-                </div>
-                <div class="card-body text-center">
-                    <div class="qr-placeholder bg-light p-4 mb-2">
-                        <i class="fas fa-qrcode fa-5x text-muted"></i>
-                        <p class="mt-2 text-muted">{{ vehicle.qr_code }}</p>
-                    </div>
-                    <small class="text-muted">Quét mã để mở khóa xe</small>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+
+    <div class="col-md-4">
+      <!-- Map -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h6><i class="fas fa-map-marker-alt"></i> Vị trí xe</h6>
+        </div>
+        <div class="card-body p-0">
+          <div id="vehicleMap" style="height: 300px"></div>
+        </div>
+        <div class="card-footer">
+          <small class="text-muted">{{ vehicle.address }}</small>
+        </div>
+      </div>
+
+      <!-- QR Code -->
+      <div class="card">
+        <div class="card-header">
+          <h6><i class="fas fa-qrcode"></i> Mã QR</h6>
+        </div>
+        <div class="card-body text-center">
+          <div class="qr-placeholder bg-light p-4 mb-2">
+            <i class="fas fa-qrcode fa-5x text-muted"></i>
+            <p class="mt-2 text-muted">{{ vehicle.qr_code }}</p>
+          </div>
+          <small class="text-muted">Quét mã để mở khóa xe</small>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
-// Initialize map
-const map = L.map('vehicleMap').setView([{{ vehicle.latitude }}, {{ vehicle.longitude }}], 15);
+  // Initialize map
+  const map = L.map('vehicleMap').setView([{{ vehicle.latitude }}, {{ vehicle.longitude }}], 15);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
 
-// Add vehicle marker
-L.marker([{{ vehicle.latitude }}, {{ vehicle.longitude }}]).addTo(map)
-    .bindPopup('<strong>{{ vehicle.brand }} {{ vehicle.model }}</strong><br>{{ vehicle.address }}');
+  // Add vehicle marker
+  L.marker([{{ vehicle.latitude }}, {{ vehicle.longitude }}]).addTo(map)
+      .bindPopup('<strong>{{ vehicle.brand }} {{ vehicle.model }}</strong><br>{{ vehicle.address }}');
 
-// Book vehicle
-document.getElementById('bookVehicleBtn')?.addEventListener('click', async function() {
-    if (confirm('Bạn có chắc muốn đặt xe này không?')) {
-        try {
-            const response = await fetch('/vehicles/{{ vehicle.id }}/book', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert(data.message);
-                window.location.href = data.redirect;
-            } else {
-                alert('Lỗi: ' + data.error);
-            }
-        } catch (error) {
-            alert('Có lỗi xảy ra: ' + error.message);
-        }
-    }
-});
+  // Book vehicle
+  document.getElementById('bookVehicleBtn')?.addEventListener('click', async function() {
+      if (confirm('Bạn có chắc muốn đặt xe này không?')) {
+          try {
+              console.log('Booking vehicle {{ vehicle.id }}...');
+              const response = await fetch('/vehicles/{{ vehicle.id }}/book', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  }
+              });
+
+              console.log('Response status:', response.status);
+              const data = await response.json();
+              console.log('Response data:', data);
+
+              if (response.ok && data.success) {
+                  alert(data.message);
+                  // Redirect to active trip or trip detail
+                  window.location.href = data.redirect || '/trips/active';
+              } else {
+                  // Show error message from server
+                  console.error('Error from server:', data.error);
+                  alert('Lỗi: ' + (data.error || 'Không thể đặt xe'));
+              }
+          } catch (error) {
+              console.error('Catch error:', error);
+              alert('Có lỗi xảy ra: ' + error.message);
+          }
+      }
+  });
 </script>
 {% endblock %}
