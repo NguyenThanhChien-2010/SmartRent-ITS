@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app.models import db, Trip, Booking, Vehicle, Payment, User
 from app.utils.repositories import TripRepository, BookingRepository, PaymentRepository, VehicleRepository
 from app.utils.notification_helper import notify_payment_deduct, notify_trip_completed
+from app.utils.route_optimizer import optimize_route, predict_traffic
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import math
@@ -346,7 +347,7 @@ def plan_trip():
 @trip_bp.route('/api/route')
 @login_required
 def get_route():
-    """API tính toán lộ trình tối ưu"""
+    """API tính toán lộ trình tối ưu với A* algorithm"""
     start_lat = request.args.get('start_lat', type=float)
     start_lng = request.args.get('start_lng', type=float)
     end_lat = request.args.get('end_lat', type=float)
@@ -355,20 +356,52 @@ def get_route():
     if not all([start_lat, start_lng, end_lat, end_lng]):
         return jsonify({'error': 'Missing parameters'}), 400
     
-    # TODO: Integrate with Google Maps Directions API or similar service
-    # For now, return mock data
+    try:
+        # Use A* algorithm for route optimization
+        route_result = optimize_route(start_lat, start_lng, end_lat, end_lng)
+        
+        # Add traffic prediction
+        now = datetime.now()
+        traffic_level = predict_traffic(now.hour, now.weekday())
+        route_result['traffic_level'] = traffic_level
+        route_result['traffic_label'] = {
+            'clear': 'Thông thoáng',
+            'normal': 'Bình thường',
+            'heavy': 'Tắc nhẹ',
+            'congested': 'Tắc nặng'
+        }.get(traffic_level, 'Bình thường')
+        
+        return jsonify(route_result)
     
-    route = {
-        'distance_km': 5.2,
-        'duration_minutes': 15,
-        'polyline': [],  # List of [lat, lng] coordinates
-        'warnings': [
-            {'type': 'traffic', 'message': 'Tắc đường nhẹ trên đường ABC'},
-            {'type': 'restricted', 'message': 'Đường XYZ đang cấm xe'}
-        ]
-    }
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@trip_bp.route('/api/optimize', methods=['POST'])
+@login_required
+def optimize_trip_route():
+    """API tối ưu hóa chuyến đi với nhiều điểm trung gian"""
+    data = request.get_json()
     
-    return jsonify(route)
+    start_lat = data.get('start_lat')
+    start_lng = data.get('start_lng')
+    end_lat = data.get('end_lat')
+    end_lng = data.get('end_lng')
+    waypoints = data.get('waypoints', [])  # [{lat, lng, name}, ...]
+    
+    if not all([start_lat, start_lng, end_lat, end_lng]):
+        return jsonify({'error': 'Missing required parameters'}), 400
+    
+    try:
+        result = optimize_route(
+            start_lat, start_lng,
+            end_lat, end_lng,
+            waypoints=waypoints
+        )
+        return jsonify(result)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @trip_bp.route('/<int:trip_id>/rating', methods=['GET', 'POST'])
