@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Trip Heatmap Analysis - SmartRent{% endblock %}
+
+{% block extra_css %}
+<style>
+    #heatmap {
+        height: 700px;
+        width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .filter-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .legend {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .legend-color {
+        width: 30px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="mb-4">
+        <h2><i class="fas fa-fire"></i> Trip Heatmap Analysis</h2>
+        <p class="text-muted">Phân tích vùng thuê xe nhiều nhất - Intelligent Transportation System</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-card">
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label">Loại xe</label>
+                <select class="form-select" id="vehicle-type-filter">
+                    <option value="all">Tất cả</option>
+                    <option value="bike">Xe đạp điện</option>
+                    <option value="motorbike">Xe máy</option>
+                    <option value="car">Ô tô</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Thời gian</label>
+                <select class="form-select" id="time-filter">
+                    <option value="all">Tất cả</option>
+                    <option value="today">Hôm nay</option>
+                    <option value="week">7 ngày qua</option>
+                    <option value="month">30 ngày qua</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Loại điểm</label>
+                <select class="form-select" id="point-type-filter">
+                    <option value="all">Điểm đầu & cuối</option>
+                    <option value="start">Chỉ điểm đầu</option>
+                    <option value="end">Chỉ điểm cuối</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100" onclick="applyFilters()">
+                    <i class="fas fa-filter"></i> Áp dụng
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Heatmap -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div id="heatmap"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats & Legend -->
+        <div class="col-md-3">
+            <div class="legend mb-3">
+                <h6><i class="fas fa-chart-bar"></i> Thống kê</h6>
+                <hr>
+                <div class="mb-3">
+                    <h4 id="total-trips">{{ heatmap_data|length // 2 }}</h4>
+                    <small class="text-muted">Tổng chuyến đi</small>
+                </div>
+                <div class="mb-3">
+                    <h4 id="total-points">{{ heatmap_data|length }}</h4>
+                    <small class="text-muted">Điểm dữ liệu</small>
+                </div>
+            </div>
+
+            <div class="legend">
+                <h6><i class="fas fa-palette"></i> Chú thích nhiệt độ</h6>
+                <hr>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00f;"></div>
+                    <span>Thấp (1-5 trips)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #0ff;"></div>
+                    <span>Trung bình (6-15)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #0f0;"></div>
+                    <span>Cao (16-30)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff0;"></div>
+                    <span>Rất cao (31-50)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f00;"></div>
+                    <span>Cực cao (>50)</span>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-lightbulb"></i> Insight
+                </div>
+                <div class="card-body">
+                    <small>
+                        <strong>Vùng nóng nhất:</strong><br>
+                        <span id="hottest-area">Quận 1, TP.HCM</span>
+                        <hr>
+                        <strong>Giờ cao điểm:</strong><br>
+                        7-9h sáng, 17-19h chiều
+                        <hr>
+                        <strong>Gợi ý:</strong><br>
+                        Tăng số xe ở vùng màu đỏ để tối ưu doanh thu
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+const MAPBOX_TOKEN = '{{ mapbox_token }}';
+let map, heatLayer;
+let rawData = {{ heatmap_data|tojson }};
+
+// Initialize map
+function initMap() {
+    map = L.map('heatmap').setView([10.8231, 106.6297], 12);
+    
+    if (MAPBOX_TOKEN) {
+        L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v10/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`, {
+            attribution: 'Map data &copy; Mapbox',
+            maxZoom: 18
+        }).addTo(map);
+    } else {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+    }
+    
+    updateHeatmap(rawData);
+}
+
+// Update heatmap
+function updateHeatmap(data) {
+    if (heatLayer) {
+        map.removeLayer(heatLayer);
+    }
+    
+    const heatData = data.map(d => [d.lat, d.lng, d.intensity || 1]);
+    
+    heatLayer = L.heatLayer(heatData, {
+        radius: 25,
+        blur: 35,
+        maxZoom: 17,
+        max: 1.0,
+        gradient: {
+            0.0: 'blue',
+            0.2: 'cyan',
+            0.4: 'lime',
+            0.6: 'yellow',
+            0.8: 'orange',
+            1.0: 'red'
+        }
+    }).addTo(map);
+    
+    document.getElementById('total-points').textContent = data.length;
+}
+
+// Apply filters
+function applyFilters() {
+    // For demo, just reload the page
+    // In production, you would fetch filtered data from API
+    const vehicleType = document.getElementById('vehicle-type-filter').value;
+    const timeFilter = document.getElementById('time-filter').value;
+    const pointType = document.getElementById('point-type-filter').value;
+    
+    console.log('Filters:', { vehicleType, timeFilter, pointType });
+    // TODO: Implement API call to get filtered data
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}

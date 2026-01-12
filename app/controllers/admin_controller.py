@@ -446,3 +446,69 @@ def vehicle_rebalancing():
 def analytics():
     """Phân tích dữ liệu chi tiết"""
     return render_template('admin/analytics.html')
+
+
+@admin_bp.route('/iot-monitor')
+@login_required
+@admin_required
+def iot_monitor():
+    """Real-time IoT monitoring dashboard"""
+    from flask import current_app
+    vehicles = Vehicle.query.all()
+    
+    # Prepare vehicle data for real-time display
+    vehicle_data = [{
+        'id': v.id,
+        'brand': v.brand,
+        'model': v.model,
+        'license_plate': v.license_plate,
+        'vehicle_type': v.vehicle_type,
+        'status': v.status,
+        'latitude': float(v.latitude) if v.latitude else 10.8231,
+        'longitude': float(v.longitude) if v.longitude else 106.6297,
+        'battery_level': v.battery_level or 100,
+        'fuel_level': v.fuel_level or 100
+    } for v in vehicles]
+    
+    mapbox_token = current_app.config.get('MAPBOX_ACCESS_TOKEN', '')
+    
+    return render_template('admin/iot_monitor.html', 
+                         vehicles=vehicle_data,
+                         mapbox_token=mapbox_token)
+
+
+@admin_bp.route('/heatmap')
+@login_required
+@admin_required
+def trip_heatmap():
+    """Trip heatmap analysis"""
+    from flask import current_app
+    
+    # Get all completed trips with coordinates
+    trips = Trip.query.filter(
+        Trip.status.in_(['completed', 'in_progress']),
+        Trip.start_latitude.isnot(None),
+        Trip.start_longitude.isnot(None)
+    ).all()
+    
+    # Prepare heatmap data
+    heatmap_data = []
+    for trip in trips:
+        if trip.start_latitude and trip.start_longitude:
+            heatmap_data.append({
+                'lat': float(trip.start_latitude),
+                'lng': float(trip.start_longitude),
+                'intensity': 1
+            })
+        if trip.end_latitude and trip.end_longitude:
+            heatmap_data.append({
+                'lat': float(trip.end_latitude),
+                'lng': float(trip.end_longitude),
+                'intensity': 1
+            })
+    
+    mapbox_token = current_app.config.get('MAPBOX_ACCESS_TOKEN', '')
+    
+    return render_template('admin/heatmap.html',
+                         heatmap_data=heatmap_data,
+                         mapbox_token=mapbox_token)
