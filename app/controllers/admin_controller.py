@@ -465,7 +465,74 @@ def vehicle_rebalancing():
 @admin_required
 def analytics():
     """Phân tích dữ liệu chi tiết"""
-    return render_template('admin/analytics.html')
+    # 1. KPI Tổng quan
+    total_revenue = db.session.query(func.sum(Payment.amount))\
+        .filter(Payment.payment_status == 'completed').scalar() or 0
+        
+    total_trips = Trip.query.filter_by(status='completed').count()
+    
+    avg_rating = db.session.query(func.avg(Trip.rating))\
+        .filter(Trip.status == 'completed', Trip.rating != None).scalar() or 0
+        
+    total_distance = db.session.query(func.sum(Trip.distance_km))\
+        .filter(Trip.status == 'completed').scalar() or 0
+        
+    avg_trip_cost = total_revenue / total_trips if total_trips > 0 else 0
+
+    # 2. Doanh thu theo tháng (6 tháng gần nhất)
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=180)
+    
+    # Query payments & xử lý group by ở Python để tương thích tốt nhất
+    payments = db.session.query(Payment.created_at, Payment.amount)\
+        .filter(Payment.payment_status == 'completed', 
+                Payment.created_at >= start_date).all()
+    
+    revenue_by_month = {}
+    for p_date, amount in payments:
+        month_key = p_date.strftime('%Y-%m')
+        revenue_by_month[month_key] = revenue_by_month.get(month_key, 0) + amount
+        
+    sorted_months = sorted(revenue_by_month.keys())
+    revenue_chart = {
+        'labels': sorted_months,
+        'data': [round(revenue_by_month[m], 2) for m in sorted_months]
+    }
+
+    # 3. Số chuyến đi theo loại xe
+    trips_by_vehicle = db.session.query(
+        Vehicle.vehicle_type,
+        func.count(Trip.id)
+    ).join(Trip).filter(Trip.status == 'completed')\
+     .group_by(Vehicle.vehicle_type).all()
+     
+    vehicle_chart = {
+        'labels': [t[0] for t in trips_by_vehicle],
+        'data': [t[1] for t in trips_by_vehicle]
+    }
+    
+    # 4. Top 5 xe doanh thu cao nhất
+    top_vehicles = db.session.query(
+        Vehicle.vehicle_code,
+        Vehicle.vehicle_type,
+        func.count(Trip.id).label('trip_count'),
+        func.sum(Trip.total_cost).label('revenue')
+    ).join(Trip).filter(Trip.status == 'completed')\
+     .group_by(Vehicle.id, Vehicle.vehicle_code, Vehicle.vehicle_type)\
+     .order_by(func.sum(Trip.total_cost).desc())\
+     .limit(5).all()
+
+    return render_template('admin/analytics.html',
+                         kpi={
+                             'revenue': total_revenue,
+                             'trips': total_trips,
+                             'avg_rating': round(avg_rating, 1),
+                             'total_distance': round(total_distance, 1),
+                             'avg_trip_cost': round(avg_trip_cost, 2)
+                         },
+                         revenue_chart=revenue_chart,
+                         vehicle_chart=vehicle_chart,
+                         top_vehicles=top_vehicles)
 
 
 @admin_bp.route('/iot-monitor')
