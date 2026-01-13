@@ -497,24 +497,12 @@ endblock %} {% block extra_css %}
           {% endif %}
         </div>
         <div class="card-footer">
-          <div class="row">
-            <div class="col-6">
-              <a
-                href="{{ url_for('payment.wallet') }}"
-                class="btn btn-outline-warning btn-sm w-100"
-              >
-                <i class="fas fa-wallet"></i> Quản lý ví
-              </a>
-            </div>
-            <div class="col-6">
-              <a
-                href="{{ url_for('payment.topup') }}"
-                class="btn btn-warning btn-sm w-100"
-              >
-                <i class="fas fa-plus"></i> Nạp tiền
-              </a>
-            </div>
-          </div>
+          <a
+            href="{{ url_for('payment.wallet') }}"
+            class="btn btn-outline-warning btn-sm w-100"
+          >
+            <i class="fas fa-wallet"></i> Quản lý ví
+          </a>
         </div>
       </div>
     </div>
