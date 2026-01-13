@@ -184,6 +184,17 @@
               </ul>
             </li>
 
+            <!-- Plan Trip -->
+            <li class="nav-item">
+              <a
+                class="nav-link px-3"
+                href="{{ url_for('trip.plan_trip') }}"
+                title="Lên kế hoạch"
+              >
+                <i class="fas fa-route fa-lg"></i>
+              </a>
+            </li>
+
             <!-- Map Icon -->
             <li class="nav-item">
               <a
@@ -245,6 +256,14 @@
                     href="{{ url_for('admin.trip_heatmap') }}"
                   >
                     <i class="fas fa-fire me-2"></i>Trip Heatmap
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin.hazard_zones') }}"
+                  >
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Vùng Nguy Hiểm
                   </a>
                 </li>
                 <li><hr class="dropdown-divider" /></li>

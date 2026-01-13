@@ -94,7 +94,7 @@
     
     <!-- Alert Cards -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-primary">
                 <div class="card-body">
                     <h6><i class="fas fa-car"></i> Xe đang sử dụng</h6>
@@ -103,7 +103,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-warning">
                 <div class="card-body">
                     <h6><i class="fas fa-wrench"></i> Xe cần bảo trì</h6>
@@ -113,7 +113,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-danger">
                 <div class="card-body">
                     <h6><i class="fas fa-exclamation-triangle"></i> Cảnh báo khẩn cấp</h6>
@@ -122,6 +122,20 @@
                     <a href="{{ url_for('admin.emergency_alerts') }}" class="btn btn-sm btn-danger mt-2">Xem chi tiết</a>
                 </div>
             </div>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('admin.hazard_zones') }}" class="text-decoration-none">
+                <div class="card border-danger shadow-sm hover-shadow" style="cursor: pointer; transition: all 0.3s;">
+                    <div class="card-body">
+                        <h6><i class="fas fa-map-marked-alt text-danger"></i> Vùng Nguy Hiểm</h6>
+                        <h4 class="text-danger">{{ stats.get('hazard_zones', 0) }}</h4>
+                        <small class="text-muted">Zones đang active</small>
+                        <div class="mt-2">
+                            <i class="fas fa-arrow-right text-primary"></i> <small>Quản lý zones</small>
+                        </div>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
     

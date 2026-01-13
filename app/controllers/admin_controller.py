@@ -40,7 +40,8 @@ def dashboard():
             .scalar() or 0,
         'active_trips': Trip.query.filter_by(status='in_progress').count(),
         'pending_maintenances': Maintenance.query.filter_by(status='scheduled').count(),
-        'open_alerts': EmergencyAlert.query.filter_by(status='open').count()
+        'open_alerts': EmergencyAlert.query.filter_by(status='open').count(),
+        'hazard_zones': HazardZone.query.filter_by(is_active=True).count()
     }
     
     # Revenue chart data (last 7 days)
