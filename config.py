@@ -26,10 +26,9 @@ class Config:
     UPLOAD_FOLDER = 'app/static/uploads'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
     
-    # Maps - Sử dụng OpenStreetMap (MIỄN PHÍ) hoặc Mapbox nếu có token
+    # Maps - Sử dụng OpenStreetMap (MIỄN PHÍ)
     # Leaflet.js + OpenStreetMap - không cần API key
-    # Alternative: Mapbox free tier (50,000 requests/month miễn phí)
-    MAPBOX_ACCESS_TOKEN = os.environ.get('MAPBOX_ACCESS_TOKEN', '')  # Optional
+    # Routing: Leaflet Routing Machine + OSRM (miễn phí)
     
     # Payment - Tạm thời chỉ dùng ví nội bộ (MIỄN PHÍ)
     # Không cần Stripe hay payment gateway bên ngoài
