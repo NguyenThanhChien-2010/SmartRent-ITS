@@ -1,0 +1,105 @@
+/* Leaflet Draw Toolbar Fixes for SmartRent ITS */
+
+/* Fix Leaflet Draw icons spacing and display */
+.leaflet-draw-toolbar a {
+    background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.svg');
+    background-repeat: no-repeat;
+    display: block;
+    width: 30px;
+    height: 30px;
+    margin: 2px;
+}
+
+/* Specific icon positions */
+.leaflet-draw-draw-polygon {
+    background-position: -2px -2px;
+}
+
+.leaflet-draw-edit-edit {
+    background-position: -211px -2px;
+}
+
+.leaflet-draw-edit-remove {
+    background-position: -242px -2px;
+}
+
+/* Fix toolbar button hover */
+.leaflet-draw-toolbar a:hover {
+    background-color: #f4f4f4;
+}
+
+/* Hazard zone specific styles */
+.hazard-zone-polygon {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.hazard-zone-polygon:hover {
+    fill-opacity: 0.4 !important;
+}
+
+/* Severity colors for hazard zones */
+.hazard-critical {
+    fill: #f44336;
+    stroke: #d32f2f;
+}
+
+.hazard-high {
+    fill: #ff5722;
+    stroke: #e64a19;
+}
+
+.hazard-medium {
+    fill: #ff9800;
+    stroke: #f57c00;
+}
+
+.hazard-low {
+    fill: #ffc107;
+    stroke: #ffa000;
+}
+
+/* Map controls styling */
+.leaflet-control-draw {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    border-radius: 4px;
+}
+
+/* Popup styling for hazard zones */
+.leaflet-popup-content {
+    margin: 12px;
+    line-height: 1.5;
+}
+
+.leaflet-popup-content strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-size: 1.1em;
+}
+
+/* Measurement tooltip */
+.leaflet-draw-tooltip {
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Drawing guide */
+.leaflet-draw-guide-dash {
+    stroke: #ff0000;
+    stroke-dasharray: 5, 5;
+    stroke-width: 2;
+}
+
+/* Zone card animations */
+.zone-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.zone-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}

@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app
 from flask_login import login_required, current_user
-from app.models import db, Trip, Booking, Vehicle, Payment, User
+from app.models import db, Trip, Booking, Vehicle, Payment, User, HazardZone
 from app.utils.repositories import TripRepository, BookingRepository, PaymentRepository, VehicleRepository
 from app.utils.notification_helper import notify_payment_deduct, notify_trip_completed
 from app.utils.route_optimizer import optimize_route, predict_traffic
 from app.utils.email_helper import generate_otp, verify_otp, send_otp_email, send_unlock_notification
+from app.utils.hazard_checker import check_route_hazards, interpolate_route_points, get_hazard_type_icon, get_severity_icon
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import math
@@ -657,5 +658,91 @@ def rate_trip(trip_id):
         })
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
+# HAZARD ZONE CHECK (ITS Feature)
+# ============================================
+
+@trip_bp.route('/api/check-route-hazards', methods=['POST'])
+@login_required
+def check_route_for_hazards():
+    """
+    API: Kiểm tra route có đi qua vùng nguy hiểm nào không
+    ITS Feature: Traveler Information System
+    """
+    try:
+        data = request.get_json()
+        route_points = data.get('route_points', [])
+        
+        if not route_points or len(route_points) < 2:
+            return jsonify({
+                'success': True,
+                'hazards': [],
+                'message': 'Route quá ngắn để kiểm tra'
+            })
+        
+        # Convert to tuples
+        route_tuples = [(p[0], p[1]) for p in route_points]
+        
+        # Interpolate route for better detection (add points every 100m)
+        interpolated_route = interpolate_route_points(route_tuples, max_distance_km=0.1)
+        
+        print(f"[HazardCheck] Original route: {len(route_tuples)} points")
+        print(f"[HazardCheck] Interpolated route: {len(interpolated_route)} points")
+        
+        # Get all active hazard zones
+        active_zones = HazardZone.query.filter_by(is_active=True).all()
+        
+        # Convert to dict format for checker
+        zones_data = []
+        for zone in active_zones:
+            zones_data.append({
+                'id': zone.id,
+                'zone_code': zone.zone_code,
+                'zone_name': zone.zone_name,
+                'hazard_type': zone.hazard_type,
+                'severity': zone.severity,
+                'description': zone.description,
+                'warning_message': zone.warning_message,
+                'polygon_coordinates': zone.polygon_coordinates,
+                'min_latitude': zone.min_latitude,
+                'max_latitude': zone.max_latitude,
+                'min_longitude': zone.min_longitude,
+                'max_longitude': zone.max_longitude,
+                'color': zone.color,
+                'is_active': zone.is_active
+            })
+        
+        # Check route against hazards
+        detected_hazards = check_route_hazards(interpolated_route, zones_data)
+        
+        print(f"[HazardCheck] Detected {len(detected_hazards)} hazards")
+        
+        # Update warning count for detected zones
+        if detected_hazards:
+            for hazard in detected_hazards:
+                zone = HazardZone.query.get(hazard['id'])
+                if zone:
+                    zone.warning_count += 1
+            db.session.commit()
+        
+        # Add icons for frontend
+        for hazard in detected_hazards:
+            hazard['type_icon'] = get_hazard_type_icon(hazard['hazard_type'])
+            hazard['severity_icon'] = get_severity_icon(hazard['severity'])
+        
+        return jsonify({
+            'success': True,
+            'hazards': detected_hazards,
+            'count': len(detected_hazards),
+            'has_hazards': len(detected_hazards) > 0
+        })
+        
+    except Exception as e:
+        print(f"[Error] Checking route hazards: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 

@@ -379,3 +379,49 @@ class Notification(db.Model):
     
     def __repr__(self):
         return f'<Notification {self.type}: {self.title}>'
+
+
+class HazardZone(db.Model):
+    """Model vùng nguy hiểm (ITS Incident Management)"""
+    __tablename__ = 'hazard_zones'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    zone_code = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    
+    # Zone Info
+    zone_name = db.Column(db.String(200), nullable=False)
+    hazard_type = db.Column(db.String(50), nullable=False)  # flood, landslide, accident, construction, event
+    severity = db.Column(db.String(20), default='medium')  # low, medium, high, critical
+    description = db.Column(db.Text)
+    warning_message = db.Column(db.String(500))
+    
+    # Polygon Coordinates (GeoJSON format)
+    polygon_coordinates = db.Column(db.JSON, nullable=False)  # Array of [lat, lng] points
+    
+    # Bounding Box (for faster filtering)
+    min_latitude = db.Column(db.Float, nullable=False, index=True)
+    max_latitude = db.Column(db.Float, nullable=False, index=True)
+    min_longitude = db.Column(db.Float, nullable=False, index=True)
+    max_longitude = db.Column(db.Float, nullable=False, index=True)
+    
+    # Visual
+    color = db.Column(db.String(20), default='#ff0000')  # Hex color for map display
+    
+    # Status & Duration
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    start_time = db.Column(db.DateTime)
+    end_time = db.Column(db.DateTime)
+    
+    # Statistics
+    warning_count = db.Column(db.Integer, default=0)  # Number of times users were warned
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # Admin who created
+    
+    # Relationships
+    creator = db.relationship('User', backref='hazard_zones_created')
+    
+    def __repr__(self):
+        return f'<HazardZone {self.zone_code}: {self.zone_name}>'

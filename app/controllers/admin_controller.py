@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import login_required, current_user
-from app.models import db, User, Vehicle, Booking, Trip, Payment, Maintenance, EmergencyAlert, IoTLog
+from app.models import db, User, Vehicle, Booking, Trip, Payment, Maintenance, EmergencyAlert, IoTLog, HazardZone
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 from functools import wraps
 from app.utils.repositories import VehicleRepository
+from app.utils.hazard_checker import calculate_polygon_bounds, get_severity_color, get_hazard_type_icon
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -709,3 +710,184 @@ def check_system_consistency():
         'orphaned_trips': orphaned_trips,
         'is_consistent': len(orphaned_vehicles) == 0 and len(orphaned_trips) == 0
     })
+
+
+# ============================================
+# HAZARD ZONES MANAGEMENT (ITS Feature)
+# ============================================
+
+@admin_bp.route('/hazard-zones')
+@login_required
+@admin_required
+def hazard_zones():
+    """Trang quản lý vùng nguy hiểm"""
+    zones = HazardZone.query.order_by(HazardZone.created_at.desc()).all()
+    
+    # Statistics
+    active_zones = HazardZone.query.filter_by(is_active=True).count()
+    total_warnings = db.session.query(func.sum(HazardZone.warning_count)).scalar() or 0
+    
+    return render_template('admin/hazard_zones.html',
+                         zones=zones,
+                         active_zones=active_zones,
+                         total_warnings=total_warnings)
+
+
+@admin_bp.route('/api/hazard-zones', methods=['GET'])
+@login_required
+@admin_required
+def get_hazard_zones():
+    """API: Lấy danh sách tất cả vùng nguy hiểm"""
+    zones = HazardZone.query.all()
+    
+    zones_data = []
+    for zone in zones:
+        zones_data.append({
+            'id': zone.id,
+            'zone_code': zone.zone_code,
+            'zone_name': zone.zone_name,
+            'hazard_type': zone.hazard_type,
+            'severity': zone.severity,
+            'description': zone.description,
+            'warning_message': zone.warning_message,
+            'polygon_coordinates': zone.polygon_coordinates,
+            'min_latitude': zone.min_latitude,
+            'max_latitude': zone.max_latitude,
+            'min_longitude': zone.min_longitude,
+            'max_longitude': zone.max_longitude,
+            'color': zone.color,
+            'is_active': zone.is_active,
+            'start_time': zone.start_time.isoformat() if zone.start_time else None,
+            'end_time': zone.end_time.isoformat() if zone.end_time else None,
+            'warning_count': zone.warning_count,
+            'created_at': zone.created_at.isoformat()
+        })
+    
+    return jsonify({
+        'success': True,
+        'zones': zones_data,
+        'count': len(zones_data)
+    })
+
+
+@admin_bp.route('/api/hazard-zones', methods=['POST'])
+@login_required
+@admin_required
+def create_hazard_zone():
+    """API: Tạo vùng nguy hiểm mới"""
+    try:
+        data = request.get_json()
+        print(f"[DEBUG] Received hazard zone data: {data}")
+        
+        # Validation
+        if not data:
+            print("[ERROR] No data received")
+            return jsonify({'error': 'Không nhận được dữ liệu'}), 400
+            
+        if not data.get('zone_name'):
+            print("[ERROR] Missing zone_name")
+            return jsonify({'error': 'Tên vùng không được để trống'}), 400
+        
+        if not data.get('polygon_coordinates') or len(data['polygon_coordinates']) < 3:
+            print(f"[ERROR] Invalid polygon: {data.get('polygon_coordinates')}")
+            return jsonify({'error': 'Polygon phải có ít nhất 3 điểm'}), 400
+        
+        # Generate zone code
+        zone_code = f"HZ{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        # Calculate bounding box
+        polygon = [(p[0], p[1]) for p in data['polygon_coordinates']]
+        bounds = calculate_polygon_bounds(polygon)
+        
+        # Determine color based on severity
+        severity = data.get('severity', 'medium')
+        color = get_severity_color(severity)
+        
+        # Create new hazard zone
+        new_zone = HazardZone(
+            zone_code=zone_code,
+            zone_name=data['zone_name'],
+            hazard_type=data.get('hazard_type', 'other'),
+            severity=severity,
+            description=data.get('description', ''),
+            warning_message=data.get('warning_message', f"Cảnh báo: {data['zone_name']}"),
+            polygon_coordinates=data['polygon_coordinates'],
+            min_latitude=bounds['min_latitude'],
+            max_latitude=bounds['max_latitude'],
+            min_longitude=bounds['min_longitude'],
+            max_longitude=bounds['max_longitude'],
+            color=color,
+            is_active=data.get('is_active', True),
+            start_time=datetime.fromisoformat(data['start_time']) if data.get('start_time') else None,
+            end_time=datetime.fromisoformat(data['end_time']) if data.get('end_time') else None,
+            created_by=current_user.id
+        )
+        
+        db.session.add(new_zone)
+        db.session.commit()
+        
+        print(f"[SUCCESS] Created hazard zone: {new_zone.zone_code} - {new_zone.zone_name}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Đã tạo vùng nguy hiểm "{data["zone_name"]}"',
+            'zone': {
+                'id': new_zone.id,
+                'zone_code': new_zone.zone_code,
+                'zone_name': new_zone.zone_name,
+                'hazard_type': new_zone.hazard_type,
+                'severity': new_zone.severity,
+                'color': new_zone.color
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Creating hazard zone: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Lỗi server: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/hazard-zones/<int:zone_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_hazard_zone(zone_id):
+    """API: Xóa vùng nguy hiểm (soft delete)"""
+    try:
+        zone = HazardZone.query.get_or_404(zone_id)
+        
+        # Soft delete by marking as inactive
+        zone.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Đã vô hiệu hóa vùng "{zone.zone_name}"'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/hazard-zones/<int:zone_id>/toggle', methods=['POST'])
+@login_required
+@admin_required
+def toggle_hazard_zone(zone_id):
+    """API: Bật/tắt vùng nguy hiểm"""
+    try:
+        zone = HazardZone.query.get_or_404(zone_id)
+        zone.is_active = not zone.is_active
+        db.session.commit()
+        
+        status = "kích hoạt" if zone.is_active else "vô hiệu hóa"
+        return jsonify({
+            'success': True,
+            'message': f'Đã {status} vùng "{zone.zone_name}"',
+            'is_active': zone.is_active
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

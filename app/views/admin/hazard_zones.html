@@ -1,0 +1,576 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý Vùng Nguy hiểm - SmartRent ITS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<style>
+    #hazardMap {
+        height: 500px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Fix Leaflet Draw Toolbar Icons */
+    .leaflet-draw-toolbar a {
+        background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.svg');
+        background-repeat: no-repeat;
+        display: block;
+        width: 30px;
+        height: 30px;
+    }
+    
+    .leaflet-draw-draw-polygon {
+        background-position: -2px -2px;
+    }
+    
+    .leaflet-draw-edit-edit {
+        background-position: -211px -2px;
+    }
+    
+    .leaflet-draw-edit-remove {
+        background-position: -242px -2px;
+    }
+    
+    .zone-card {
+        transition: transform 0.2s;
+    }
+    
+    .zone-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .severity-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .stats-card {
+        border-left: 4px solid #007bff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-exclamation-triangle text-warning"></i> Quản lý Vùng Nguy hiểm (ITS)</h2>
+            <p class="text-muted">Đánh dấu các khu vực nguy hiểm trên bản đồ để cảnh báo người dùng</p>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Tổng số vùng</h6>
+                            <h3 class="mb-0">{{ zones|length }}</h3>
+                        </div>
+                        <i class="fas fa-layer-group fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card" style="border-left-color: #28a745;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Đang hoạt động</h6>
+                            <h3 class="mb-0 text-success">{{ active_zones }}</h3>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card" style="border-left-color: #ffc107;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Tổng cảnh báo</h6>
+                            <h3 class="mb-0 text-warning">{{ total_warnings }}</h3>
+                        </div>
+                        <i class="fas fa-bell fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Map & Form -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-map-marked-alt"></i> Bản đồ Vùng Nguy hiểm</h5>
+                </div>
+                <div class="card-body">
+                    <div id="hazardMap"></div>
+                    <div class="mt-3">
+                        <p class="small text-muted mb-1">
+                            <i class="fas fa-info-circle"></i> Hướng dẫn:
+                        </p>
+                        <ul class="small text-muted mb-0">
+                            <li>Click nút <i class="fas fa-draw-polygon"></i> ở góc trái bản đồ để vẽ polygon</li>
+                            <li>Click các điểm trên bản đồ để tạo vùng nguy hiểm</li>
+                            <li>Double-click hoặc click điểm đầu tiên để hoàn thành</li>
+                            <li>Điền form bên phải và click "Lưu vùng nguy hiểm"</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Tạo Vùng Mới</h5>
+                </div>
+                <div class="card-body">
+                    <form id="hazardZoneForm">
+                        <div class="mb-3">
+                            <label class="form-label">Tên vùng *</label>
+                            <input type="text" class="form-control" id="zoneName" required placeholder="VD: Ngập lụt đường Nguyễn Huệ">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Loại nguy hiểm *</label>
+                            <select class="form-select" id="hazardType" required>
+                                <option value="flood">🌊 Ngập lụt</option>
+                                <option value="landslide">⛰️ Sạt lở</option>
+                                <option value="accident">🚗 Tai nạn</option>
+                                <option value="construction">🚧 Thi công</option>
+                                <option value="event">📅 Sự kiện</option>
+                                <option value="other">⚠️ Khác</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Mức độ *</label>
+                            <select class="form-select" id="severity" required>
+                                <option value="low">🟡 Thấp</option>
+                                <option value="medium">🟠 Trung bình</option>
+                                <option value="high">🟠 Cao</option>
+                                <option value="critical">🔴 Nghiêm trọng</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Mô tả</label>
+                            <textarea class="form-control" id="description" rows="2" placeholder="Thông tin chi tiết về vùng nguy hiểm"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Thông điệp cảnh báo</label>
+                            <input type="text" class="form-control" id="warningMessage" placeholder="Sẽ hiển thị cho người dùng">
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="isActive" checked>
+                            <label class="form-check-label" for="isActive">
+                                Kích hoạt ngay
+                            </label>
+                        </div>
+                        
+                        <div id="polygonInfo" class="alert alert-info small d-none">
+                            <i class="fas fa-check-circle"></i> Polygon đã vẽ: <span id="polygonPoints">0</span> điểm
+                        </div>
+                        
+                        <div id="drawInstructions" class="alert alert-warning small">
+                            <i class="fas fa-hand-pointer"></i> <strong>Bước tiếp theo:</strong> Vẽ polygon trên bản đồ bằng cách click nút 
+                            <i class="fas fa-draw-polygon"></i> ở góc trái bản đồ
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100" id="saveBtn" disabled 
+                                data-bs-toggle="tooltip" 
+                                title="Vui lòng vẽ polygon trên bản đồ trước">
+                            <i class="fas fa-save"></i> Lưu vùng nguy hiểm
+                        </button>
+                        
+                        <small class="text-muted d-block mt-2 text-center">
+                            <i class="fas fa-lightbulb"></i> Nút sẽ tự động kích hoạt sau khi vẽ polygon
+                        </small>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Zones List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Danh sách Vùng Nguy hiểm</h5>
+                    <span class="badge bg-light text-dark">{{ zones|length }} vùng</span>
+                </div>
+                <div class="card-body">
+                    {% if zones %}
+                    <div class="row">
+                        {% for zone in zones %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card zone-card h-100 {% if not zone.is_active %}opacity-50{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="mb-0">{{ zone.zone_name }}</h6>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input toggle-zone" 
+                                                   type="checkbox" 
+                                                   data-zone-id="{{ zone.id }}"
+                                                   {% if zone.is_active %}checked{% endif %}>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <span class="badge severity-badge 
+                                            {% if zone.severity == 'critical' %}bg-danger
+                                            {% elif zone.severity == 'high' %}bg-warning text-dark
+                                            {% elif zone.severity == 'medium' %}bg-info
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ zone.severity|upper }}
+                                        </span>
+                                        <span class="badge bg-light text-dark">{{ zone.hazard_type }}</span>
+                                    </div>
+                                    
+                                    <p class="small text-muted mb-2">
+                                        <i class="fas fa-code"></i> {{ zone.zone_code }}<br>
+                                        <i class="fas fa-bell"></i> {{ zone.warning_count }} cảnh báo
+                                    </p>
+                                    
+                                    {% if zone.description %}
+                                    <p class="small mb-2">{{ zone.description[:100] }}{% if zone.description|length > 100 %}...{% endif %}</p>
+                                    {% endif %}
+                                    
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-primary view-zone" data-zone-id="{{ zone.id }}">
+                                            <i class="fas fa-eye"></i> Xem
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-zone" data-zone-id="{{ zone.id }}" data-zone-name="{{ zone.zone_name }}">
+                                            <i class="fas fa-trash"></i> Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-footer small text-muted">
+                                    <i class="fas fa-clock"></i> {{ zone.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                        <p>Chưa có vùng nguy hiểm nào. Hãy vẽ polygon trên bản đồ để tạo vùng mới!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    let map;
+    let drawnItems;
+    let currentPolygon = null;
+    let loadedZones = [];
+    
+    // Initialize map
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initializeMap, 100);
+    });
+    
+    function initializeMap() {
+        // Create map centered on TP.HCM
+        map = L.map('hazardMap').setView([10.762622, 106.660172], 13);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Force map to render properly
+        setTimeout(() => map.invalidateSize(), 200);
+        
+        // Initialize FeatureGroup to store drawn items
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        // Load Leaflet Draw dynamically with callback
+        loadLeafletDraw();
+        
+        // Load existing zones
+        loadExistingZones();
+    }
+    
+    function loadLeafletDraw() {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js';
+        script.onload = function() {
+            console.log('✅ Leaflet Draw loaded');
+            initializeDrawControls();
+        };
+        script.onerror = function() {
+            console.error('❌ Failed to load Leaflet Draw');
+        };
+        document.head.appendChild(script);
+    }
+    
+    function initializeDrawControls() {
+        // Add draw controls
+        const drawControl = new L.Control.Draw({
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true,
+                    drawError: {
+                        color: '#e1e100',
+                        message: '<strong>Lỗi:</strong> Polygon không được tự cắt!'
+                    },
+                    shapeOptions: {
+                        color: '#ff0000',
+                        weight: 3
+                    }
+                },
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                marker: false,
+                circlemarker: false
+            },
+            edit: {
+                featureGroup: drawnItems,
+                remove: true
+            }
+        });
+        map.addControl(drawControl);
+        
+        // Handle polygon creation
+        map.on(L.Draw.Event.CREATED, function(e) {
+            const layer = e.layer;
+            
+            // Remove previous polygon if exists
+            if (currentPolygon) {
+                drawnItems.removeLayer(currentPolygon);
+            }
+            
+            drawnItems.addLayer(layer);
+            currentPolygon = layer;
+            
+            // Get coordinates
+            const latlngs = layer.getLatLngs()[0];
+            const coords = latlngs.map(ll => [ll.lat, ll.lng]);
+            
+            // Store coordinates
+            currentPolygon.coordinates = coords;
+            
+            // Update UI with null checks
+            const polygonInfo = document.getElementById('polygonInfo');
+            const polygonPoints = document.getElementById('polygonPoints');
+            const drawInstructions = document.getElementById('drawInstructions');
+            const saveBtn = document.getElementById('saveBtn');
+            
+            if (polygonInfo) polygonInfo.classList.remove('d-none');
+            if (polygonPoints) polygonPoints.textContent = coords.length;
+            if (drawInstructions) drawInstructions.classList.add('d-none');
+            
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('btn-secondary');
+                saveBtn.classList.add('btn-success');
+                saveBtn.setAttribute('title', 'Click để lưu vùng nguy hiểm');
+            }
+            
+            console.log('✅ Polygon created with', coords.length, 'points');
+        });
+        
+        // Handle polygon deletion
+        map.on(L.Draw.Event.DELETED, function() {
+            currentPolygon = null;
+            
+            const polygonInfo = document.getElementById('polygonInfo');
+            const drawInstructions = document.getElementById('drawInstructions');
+            const saveBtn = document.getElementById('saveBtn');
+            
+            if (polygonInfo) polygonInfo.classList.add('d-none');
+            if (drawInstructions) drawInstructions.classList.remove('d-none');
+            
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.classList.remove('btn-success');
+                saveBtn.classList.add('btn-secondary');
+                saveBtn.setAttribute('title', 'Vui lòng vẽ polygon trên bản đồ trước');
+            }
+        });
+    }
+    
+    // Load existing zones from server
+    function loadExistingZones() {
+        fetch('/admin/api/hazard-zones')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadedZones = data.zones;
+                    displayZonesOnMap(data.zones);
+                }
+            })
+            .catch(error => console.error('Error loading zones:', error));
+    }
+    
+    function displayZonesOnMap(zones) {
+        zones.forEach(zone => {
+            if (!zone.is_active) return;
+            
+            const polygon = L.polygon(zone.polygon_coordinates, {
+                color: zone.color || '#ff0000',
+                fillColor: zone.color || '#ff0000',
+                fillOpacity: 0.2,
+                weight: 2
+            }).addTo(map);
+            
+            polygon.bindPopup(`
+                <strong>${zone.zone_name}</strong><br>
+                <span class="badge bg-${getSeverityClass(zone.severity)}">${zone.severity}</span>
+                <span class="badge bg-secondary">${zone.hazard_type}</span><br>
+                <small>${zone.description || ''}</small>
+            `);
+        });
+    }
+    
+    // Form submission
+    document.getElementById('hazardZoneForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!currentPolygon || !currentPolygon.coordinates) {
+            alert('Vui lòng vẽ polygon trước!');
+            return;
+        }
+        
+        const formData = {
+            zone_name: document.getElementById('zoneName').value,
+            hazard_type: document.getElementById('hazardType').value,
+            severity: document.getElementById('severity').value,
+            description: document.getElementById('description').value,
+            warning_message: document.getElementById('warningMessage').value || document.getElementById('zoneName').value,
+            polygon_coordinates: currentPolygon.coordinates,
+            is_active: document.getElementById('isActive').checked
+        };
+        
+        console.log('📤 Sending hazard zone data:', formData);
+        
+        // Disable submit button
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+        
+        // Save to server
+        fetch('/admin/api/hazard-zones', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            console.log('📥 Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📥 Response data:', data);
+            
+            if (data.success) {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Lưu vùng nguy hiểm';
+                alert('❌ Lỗi: ' + (data.error || 'Không thể lưu vùng nguy hiểm'));
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error:', error);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Lưu vùng nguy hiểm';
+            alert('❌ Lỗi kết nối: ' + error.message);
+        });
+    });
+    
+    // Toggle zone active status
+    document.querySelectorAll('.toggle-zone').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const zoneId = this.dataset.zoneId;
+            
+            fetch(`/admin/api/hazard-zones/${zoneId}/toggle`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅', data.message);
+                } else {
+                    alert('Lỗi: ' + data.error);
+                    this.checked = !this.checked;
+                }
+            });
+        });
+    });
+    
+    // Delete zone
+    document.querySelectorAll('.delete-zone').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const zoneId = this.dataset.zoneId;
+            const zoneName = this.dataset.zoneName;
+            
+            if (!confirm(`Xác nhận xóa vùng "${zoneName}"?`)) return;
+            
+            fetch(`/admin/api/hazard-zones/${zoneId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    location.reload();
+                } else {
+                    alert('❌ Lỗi: ' + data.error);
+                }
+            });
+        });
+    });
+    
+    // View zone on map
+    document.querySelectorAll('.view-zone').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const zoneId = parseInt(this.dataset.zoneId);
+            const zone = loadedZones.find(z => z.id === zoneId);
+            
+            if (zone && zone.polygon_coordinates.length > 0) {
+                const bounds = L.latLngBounds(zone.polygon_coordinates);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        });
+    });
+    
+    function getSeverityClass(severity) {
+        const classes = {
+            'critical': 'danger',
+            'high': 'warning',
+            'medium': 'info',
+            'low': 'secondary'
+        };
+        return classes[severity] || 'secondary';
+    }
+</script>
+{% endblock %}
