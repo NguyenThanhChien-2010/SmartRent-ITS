@@ -522,6 +522,30 @@ def analytics():
      .order_by(func.sum(Trip.total_cost).desc())\
      .limit(5).all()
 
+    # 5. Firebase Data Integration
+    firebase_stats = {'status': 'Checking...'}
+    try:
+        from app.utils.firebase_client import get_db
+        firestore_db = get_db()
+        
+        if firestore_db:
+            firebase_stats['status'] = 'Connected'
+            collections = ['vehicles', 'trips', 'bookings', 'users', 'payments']
+            
+            for col in collections:
+                # Get collection reference
+                col_ref = firestore_db.collection(col)
+                # Get count (using stream for now as it's simple for small datasets)
+                docs = col_ref.stream()
+                firebase_stats[col] = sum(1 for _ in docs)
+        else:
+            firebase_stats['status'] = 'Not Configured'
+            
+    except Exception as e:
+        print(f"Error fetching Firebase stats: {e}")
+        firebase_stats['status'] = 'Error'
+        firebase_stats['error'] = str(e)
+
     return render_template('admin/analytics.html',
                          kpi={
                              'revenue': total_revenue,
@@ -532,7 +556,8 @@ def analytics():
                          },
                          revenue_chart=revenue_chart,
                          vehicle_chart=vehicle_chart,
-                         top_vehicles=top_vehicles)
+                         top_vehicles=top_vehicles,
+                         firebase_stats=firebase_stats)
 
 
 @admin_bp.route('/iot-monitor')

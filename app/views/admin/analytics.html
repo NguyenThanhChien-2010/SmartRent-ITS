@@ -50,6 +50,47 @@
         </div>
     </div>
 
+    <!-- Firebase Stats -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-fire"></i> Firebase Cloud Firestore Data</h6>
+                    <span class="badge bg-dark">{{ firebase_stats.status }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col">
+                            <h3>{{ firebase_stats.vehicles|default(0) }}</h3>
+                            <p class="text-muted mb-0">Vehicles</p>
+                        </div>
+                        <div class="col">
+                            <h3>{{ firebase_stats.trips|default(0) }}</h3>
+                            <p class="text-muted mb-0">Trips</p>
+                        </div>
+                        <div class="col">
+                            <h3>{{ firebase_stats.bookings|default(0) }}</h3>
+                            <p class="text-muted mb-0">Bookings</p>
+                        </div>
+                        <div class="col">
+                            <h3>{{ firebase_stats.users|default(0) }}</h3>
+                            <p class="text-muted mb-0">Users</p>
+                        </div>
+                        <div class="col">
+                            <h3>{{ firebase_stats.payments|default(0) }}</h3>
+                            <p class="text-muted mb-0">Payments</p>
+                        </div>
+                    </div>
+                    {% if firebase_stats.error %}
+                    <div class="alert alert-danger mt-3 mb-0">
+                        {{ firebase_stats.error }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row mb-4">
         <!-- Revenue Chart -->
         <div class="col-md-8">
