@@ -74,9 +74,9 @@ def register():
                             'synced_from': 'register'
                         }
                         fs_db.collection('users').document(str(new_user.id)).set(user_data)
-                        print(f'[Firebase] User {new_user.email} synced to Firestore')
+                        print(f'[Firebase] ✅ User {new_user.email} synced to Firestore')
                     except Exception as firebase_error:
-                        print(f'[Firebase] Failed to sync user: {firebase_error}')
+                        print(f'[Firebase] ❌ Failed to sync user: {firebase_error}')
             
             flash('Đăng ký thành công! Vui lòng đăng nhập.', 'success')
             return redirect(url_for('auth.login'))
