@@ -493,12 +493,6 @@ def analytics():
         month_key = p_date.strftime('%Y-%m')
         revenue_by_month[month_key] = revenue_by_month.get(month_key, 0) + amount
         
-    sorted_months = sorted(revenue_by_month.keys())
-    revenue_chart = {
-        'labels': sorted_months,
-        'data': [round(revenue_by_month[m], 2) for m in sorted_months]
-    }
-
     # 3. Số chuyến đi theo loại xe
     trips_by_vehicle = db.session.query(
         Vehicle.vehicle_type,
@@ -524,6 +518,7 @@ def analytics():
 
     # 5. Firebase Data Integration
     firebase_stats = {'status': 'Checking...'}
+    firebase_revenue_by_month = {}
     try:
         from app.utils.firebase_client import get_db
         firestore_db = get_db()
@@ -537,7 +532,44 @@ def analytics():
                 col_ref = firestore_db.collection(col)
                 # Get count (using stream for now as it's simple for small datasets)
                 docs = col_ref.stream()
-                firebase_stats[col] = sum(1 for _ in docs)
+                
+                if col == 'payments':
+                    count = 0
+                    revenue = 0
+                    for doc in docs:
+                        count += 1
+                        data = doc.to_dict()
+                        if data.get('payment_status') == 'completed':
+                            amount = float(data.get('amount', 0) or 0)
+                            revenue += amount
+                            
+                            # Parse created_at for chart
+                            try:
+                                c_at = data.get('created_at')
+                                if c_at:
+                                    if isinstance(c_at, str):
+                                        p_date = datetime.fromisoformat(c_at.replace('Z', '+00:00'))
+                                    elif hasattr(c_at, 'date'):
+                                        p_date = c_at
+                                    elif hasattr(c_at, 'to_datetime'):
+                                        p_date = c_at.to_datetime()
+                                    else:
+                                        p_date = None
+                                        
+                                    if p_date:
+                                        if p_date.tzinfo:
+                                            p_date = p_date.replace(tzinfo=None)
+                                        
+                                        if p_date >= start_date:
+                                            m_key = p_date.strftime('%Y-%m')
+                                            firebase_revenue_by_month[m_key] = firebase_revenue_by_month.get(m_key, 0) + amount
+                            except Exception:
+                                pass
+                                
+                    firebase_stats[col] = count
+                    firebase_stats['revenue'] = revenue
+                else:
+                    firebase_stats[col] = sum(1 for _ in docs)
         else:
             firebase_stats['status'] = 'Not Configured'
             
@@ -545,6 +577,23 @@ def analytics():
         print(f"Error fetching Firebase stats: {e}")
         firebase_stats['status'] = 'Error'
         firebase_stats['error'] = str(e)
+
+    # Combine data for chart (SQL + Firebase)
+    all_months = set(revenue_by_month.keys()) | set(firebase_revenue_by_month.keys())
+    
+    # Ensure we have at least last 6 months labels if data is sparse
+    if not all_months:
+        for i in range(5, -1, -1):
+            d = datetime.utcnow() - timedelta(days=i*30)
+            all_months.add(d.strftime('%Y-%m'))
+            
+    sorted_months = sorted(list(all_months))
+    
+    revenue_chart = {
+        'labels': sorted_months,
+        'data': [round(revenue_by_month.get(m, 0), 2) for m in sorted_months],
+        'firebase_data': [round(firebase_revenue_by_month.get(m, 0), 2) for m in sorted_months]
+    }
 
     return render_template('admin/analytics.html',
                          kpi={

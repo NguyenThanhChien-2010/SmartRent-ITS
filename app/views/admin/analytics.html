@@ -79,6 +79,9 @@
                         <div class="col">
                             <h3>{{ firebase_stats.payments|default(0) }}</h3>
                             <p class="text-muted mb-0">Payments</p>
+                            {% if firebase_stats.revenue is defined %}
+                            <small class="text-success fw-bold">{{ "{:,.0f}".format(firebase_stats.revenue) }} đ</small>
+                            {% endif %}
                         </div>
                     </div>
                     {% if firebase_stats.error %}
@@ -168,9 +171,16 @@
             data: {
                 labels: {{ revenue_chart.labels | tojson }},
                 datasets: [{
-                    label: 'Doanh thu (VNĐ)',
+                    label: 'Doanh thu SQL (VNĐ)',
                     data: {{ revenue_chart.data | tojson }},
                     borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1,
+                    fill: false
+                }, {
+                    label: 'Doanh thu Firebase (VNĐ)',
+                    data: {{ revenue_chart.firebase_data | tojson }},
+                    borderColor: 'rgb(255, 159, 64)',
+                    borderDash: [5, 5],
                     tension: 0.1,
                     fill: false
                 }]
