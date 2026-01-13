@@ -1,73 +1,82 @@
-{% extends "base.html" %}
-
-{% block title %}Bản đồ xe - SmartRent{% endblock %}
-
+{% extends "base.html" %} {% block title %}Bản đồ xe - SmartRent{% endblock %}
 {% block content %}
 <div class="container-fluid mt-3">
-    <div class="row">
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5><i class="fas fa-filter"></i> Bộ lọc</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Loại xe</label>
-                        <select class="form-select" id="vehicleTypeFilter">
-                            <option value="all">Tất cả</option>
-                            <option value="bike">Xe đạp</option>
-                            <option value="motorbike">Xe máy</option>
-                            <option value="ebike">Xe đạp điện</option>
-                            <option value="scooter">Scooter</option>
-                            <option value="car">Ô tô</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Bán kính tìm kiếm (km)</label>
-                        <input type="range" class="form-range" id="radiusFilter" min="1" max="20" value="5">
-                        <span id="radiusValue">5 km</span>
-                    </div>
-                    <button class="btn btn-primary w-100" id="searchBtn">
-                        <i class="fas fa-search"></i> Tìm kiếm
-                    </button>
-                </div>
-            </div>
-            
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6>Xe gần bạn</h6>
-                </div>
-                <div class="card-body" style="max-height: 400px; overflow-y: auto;" id="vehicleList">
-                    <p class="text-muted">Đang tải...</p>
-                </div>
-            </div>
+  <div class="row">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h5><i class="fas fa-filter"></i> Bộ lọc</h5>
         </div>
-        
-        <div class="col-md-9">
-            <div class="card">
-                <div class="card-body p-0">
-                    <div id="map" style="height: 600px;"></div>
-                </div>
-            </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Loại xe</label>
+            <select class="form-select" id="vehicleTypeFilter">
+              <option value="all">Tất cả</option>
+              <option value="bike">Xe đạp</option>
+              <option value="motorbike">Xe máy</option>
+              <option value="ebike">Xe đạp điện</option>
+              <option value="scooter">Scooter</option>
+              <option value="car">Ô tô</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Bán kính tìm kiếm (km)</label>
+            <input
+              type="range"
+              class="form-range"
+              id="radiusFilter"
+              min="1"
+              max="20"
+              value="5"
+            />
+            <span id="radiusValue">5 km</span>
+          </div>
+          <button class="btn btn-primary w-100" id="searchBtn">
+            <i class="fas fa-search"></i> Tìm kiếm
+          </button>
         </div>
-    </div>
-</div>
-{% endblock %}
+      </div>
 
-{% block extra_js %}
+      <div class="card mt-3">
+        <div class="card-header">
+          <h6>Xe gần bạn</h6>
+        </div>
+        <div
+          class="card-body"
+          style="max-height: 400px; overflow-y: auto"
+          id="vehicleList"
+        >
+          <p class="text-muted">Đang tải...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-9">
+      <div class="card">
+        <div class="card-body p-0">
+          <div id="map" style="height: 600px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
 <!-- Leaflet Routing Machine CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+/>
 
 <style>
-/* Vehicle marker styles */
-.custom-div-icon {
+  /* Vehicle marker styles */
+  .custom-div-icon {
     background: transparent !important;
     border: none !important;
-}
+  }
 
-.vehicle-icon {
+  .vehicle-icon {
     background: #fff;
-    border: 3px solid #2196F3;
+    border: 3px solid #2196f3;
     border-radius: 50%;
     width: 45px;
     height: 45px;
@@ -75,17 +84,32 @@
     align-items: center;
     justify-content: center;
     font-size: 24px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
 
-/* Status-based colors */
-.vehicle-icon.available { border-color: #4CAF50; color: #4CAF50; }
-.vehicle-icon.reserved { border-color: #FFC107; color: #FFC107; opacity: 0.8; }
-.vehicle-icon.in-use { border-color: #F44336; color: #F44336; opacity: 0.7; }
-.vehicle-icon.maintenance { border-color: #9E9E9E; color: #9E9E9E; opacity: 0.6; }
+  /* Status-based colors */
+  .vehicle-icon.available {
+    border-color: #4caf50;
+    color: #4caf50;
+  }
+  .vehicle-icon.reserved {
+    border-color: #ffc107;
+    color: #ffc107;
+    opacity: 0.8;
+  }
+  .vehicle-icon.in-use {
+    border-color: #f44336;
+    color: #f44336;
+    opacity: 0.7;
+  }
+  .vehicle-icon.maintenance {
+    border-color: #9e9e9e;
+    color: #9e9e9e;
+    opacity: 0.6;
+  }
 
-.user-icon {
-    background: #2196F3;
+  .user-icon {
+    background: #2196f3;
     border: 3px solid #fff;
     border-radius: 50%;
     width: 40px;
@@ -95,101 +119,107 @@
     justify-content: center;
     color: white;
     font-size: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
 
-.vehicle-card:hover {
+  .vehicle-card:hover {
     background-color: #f8f9fa;
     transform: translateY(-2px);
     transition: all 0.2s ease;
-}
+  }
 
-/* Hide default routing control */
-.leaflet-routing-container {
+  /* Hide default routing control */
+  .leaflet-routing-container {
     display: none;
-}
+  }
 </style>
 
 <!-- Leaflet Routing Machine JS -->
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
-let map;
-let userMarker;
-let vehicleMarkers = [];
-let userLocation = null;
-let routingControl = null;
+  let map;
+  let userMarker;
+  let vehicleMarkers = [];
+  let userLocation = null;
+  let routingControl = null;
 
-// Initialize map
-document.addEventListener('DOMContentLoaded', function() {
+  // Initialize map
+  document.addEventListener("DOMContentLoaded", function () {
     // Default location (Ho Chi Minh City)
-    map = L.map('map').setView([10.8231, 106.6297], 13);
-    
+    map = L.map("map").setView([10.8231, 106.6297], 13);
+
     // Add OpenStreetMap tiles (FREE!)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
     }).addTo(map);
-    
+
     // Get user location
     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            userLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
-            
-            map.setView([userLocation.lat, userLocation.lng], 15);
-            
-            // Add user marker
-            const userIcon = L.divIcon({
-                html: '<div class="user-icon"><i class="fas fa-user"></i></div>',
-                className: 'custom-div-icon',
-                iconSize: [40, 40],
-                iconAnchor: [20, 20]
-            });
-            
-            userMarker = L.marker([userLocation.lat, userLocation.lng], {
-                icon: userIcon
-            }).addTo(map).bindPopup('<strong>Vị trí của bạn</strong>');
-            
-            // Search for nearby vehicles
-            searchVehicles();
-        });
-    }
-});
+      navigator.geolocation.getCurrentPosition(function (position) {
+        userLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
 
-// Search vehicles
-function searchVehicles() {
-    if (!userLocation) {
-        alert('Không thể lấy vị trí của bạn');
-        return;
+        map.setView([userLocation.lat, userLocation.lng], 15);
+
+        // Add user marker
+        const userIcon = L.divIcon({
+          html: '<div class="user-icon"><i class="fas fa-user"></i></div>',
+          className: "custom-div-icon",
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        });
+
+        userMarker = L.marker([userLocation.lat, userLocation.lng], {
+          icon: userIcon,
+        })
+          .addTo(map)
+          .bindPopup("<strong>Vị trí của bạn</strong>");
+
+        // Search for nearby vehicles
+        searchVehicles();
+      });
     }
-    
-    const vehicleType = document.getElementById('vehicleTypeFilter').value;
-    const radius = document.getElementById('radiusFilter').value;
-    
-    fetch(`/vehicles/api/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&type=${vehicleType}&show_all=true`)
-        .then(response => response.json())
-        .then(data => {
-            // Clear existing markers
-            vehicleMarkers.forEach(marker => map.removeLayer(marker));
-            vehicleMarkers = [];
-            
-            // Add vehicle markers
-            const vehicleList = document.getElementById('vehicleList');
-            vehicleList.innerHTML = '';
-            
-            console.log('Vehicle counts by status:', data.status_counts);
-            console.log('Total vehicles found:', data.count);
-            
-            if (data.vehicles.length === 0) {
-                vehicleList.innerHTML = '<p class="text-muted">Không tìm thấy xe nào</p>';
-                return;
-            }
-            
-            // Add summary
-            vehicleList.innerHTML = `
+  });
+
+  // Search vehicles
+  function searchVehicles() {
+    if (!userLocation) {
+      alert("Không thể lấy vị trí của bạn");
+      return;
+    }
+
+    const vehicleType = document.getElementById("vehicleTypeFilter").value;
+    const radius = document.getElementById("radiusFilter").value;
+
+    fetch(
+      `/vehicles/api/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&type=${vehicleType}&show_all=true`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        // Clear existing markers
+        vehicleMarkers.forEach((marker) => map.removeLayer(marker));
+        vehicleMarkers = [];
+
+        // Add vehicle markers
+        const vehicleList = document.getElementById("vehicleList");
+        vehicleList.innerHTML = "";
+
+        console.log("Vehicle counts by status:", data.status_counts);
+        console.log("Total vehicles found:", data.count);
+
+        if (data.vehicles.length === 0) {
+          vehicleList.innerHTML =
+            '<p class="text-muted">Không tìm thấy xe nào</p>';
+          return;
+        }
+
+        // Add summary
+        vehicleList.innerHTML = `
                 <div class="alert alert-info py-2 px-2 mb-2">
                     <small>
                         <strong>Tổng: ${data.count} xe</strong><br>
@@ -200,195 +230,230 @@ function searchVehicles() {
                     </small>
                 </div>
             `;
-            
-            data.vehicles.forEach((vehicle, index) => {
-                // Get status badge
-                let statusBadge = '';
-                let canRent = vehicle.status === 'available';
-                
-                if (vehicle.status === 'available') {
-                    statusBadge = '<span class="badge bg-success">Khả dụng</span>';
-                } else if (vehicle.status === 'reserved') {
-                    statusBadge = '<span class="badge bg-warning">Đã đặt</span>';
-                } else if (vehicle.status === 'in_use') {
-                    statusBadge = '<span class="badge bg-danger">Đang dùng</span>';
-                } else if (vehicle.status === 'maintenance') {
-                    statusBadge = '<span class="badge bg-secondary">Bảo trì</span>';
-                }
-                
-                // Add marker to map
-                const icon = getVehicleIconByStatus(vehicle.type, vehicle.status);
-                const marker = L.marker([vehicle.latitude, vehicle.longitude], { icon })
-                    .addTo(map)
-                    .bindPopup(`
+
+        data.vehicles.forEach((vehicle, index) => {
+          // Get status badge
+          let statusBadge = "";
+          let canRent = vehicle.status === "available";
+
+          if (vehicle.status === "available") {
+            statusBadge = '<span class="badge bg-success">Khả dụng</span>';
+          } else if (vehicle.status === "reserved") {
+            statusBadge = '<span class="badge bg-warning">Đã đặt</span>';
+          } else if (vehicle.status === "in_use") {
+            statusBadge = '<span class="badge bg-danger">Đang dùng</span>';
+          } else if (vehicle.status === "maintenance") {
+            statusBadge = '<span class="badge bg-secondary">Bảo trì</span>';
+          }
+
+          // Add marker to map
+          const icon = getVehicleIconByStatus(vehicle.type, vehicle.status);
+          const marker = L.marker([vehicle.latitude, vehicle.longitude], {
+            icon,
+          }).addTo(map).bindPopup(`
                         <div style="min-width: 200px;">
-                            <strong>${vehicle.brand} ${vehicle.model}</strong><br>
-                            <span class="badge bg-primary">${getVehicleTypeName(vehicle.type)}</span>
+                            <strong>${vehicle.brand} ${
+            vehicle.model
+          }</strong><br>
+                            <span class="badge bg-primary">${getVehicleTypeName(
+                              vehicle.type
+                            )}</span>
                             ${statusBadge}<br>
                             <hr style="margin: 8px 0;">
-                            <i class="fas fa-map-marker-alt text-danger"></i> ${vehicle.distance} km<br>
-                            <i class="fas fa-battery-full text-success"></i> Pin: ${vehicle.battery}%<br>
-                            <i class="fas fa-money-bill-wave text-warning"></i> ${vehicle.price_per_minute} VND/phút<br>
-                            ${canRent ? `
+                            <i class="fas fa-map-marker-alt text-danger"></i> ${
+                              vehicle.distance
+                            } km<br>
+                            <i class="fas fa-battery-full text-success"></i> Pin: ${
+                              vehicle.battery
+                            }%<br>
+                            <i class="fas fa-money-bill-wave text-warning"></i> ${
+                              vehicle.price_per_minute
+                            } VND/phút<br>
+                            ${
+                              canRent
+                                ? `
                                 <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary mt-2 w-100 text-white" style="text-decoration: none;">
                                     <i class="fas fa-car"></i> Chi tiết & Thuê xe
                                 </a>
                                 <button class="btn btn-sm btn-info mt-1 w-100" onclick="showDirections(${vehicle.latitude}, ${vehicle.longitude}, '${vehicle.brand} ${vehicle.model}')">
                                     <i class="fas fa-route"></i> Chỉ đường
                                 </button>
-                            ` : '<button class="btn btn-sm btn-secondary mt-2 w-100" disabled>Không khả dụng</button>'}
+                            `
+                                : '<button class="btn btn-sm btn-secondary mt-2 w-100" disabled>Không khả dụng</button>'
+                            }
                         </div>
                     `);
-                
-                vehicleMarkers.push(marker);
-                
-                // Add to list
-                const cardOpacity = canRent ? '1' : '0.6';
-                vehicleList.innerHTML += `
+
+          vehicleMarkers.push(marker);
+
+          // Add to list
+          const cardOpacity = canRent ? "1" : "0.6";
+          vehicleList.innerHTML += `
                     <div class="card mb-2 vehicle-card" onclick="zoomToVehicle(${index})" style="cursor: pointer; opacity: ${cardOpacity};">
                         <div class="card-body p-2">
                             <div class="d-flex justify-content-between align-items-start">
-                                <h6 class="mb-1">${vehicle.brand} ${vehicle.model}</h6>
+                                <h6 class="mb-1">${vehicle.brand} ${
+            vehicle.model
+          }</h6>
                                 ${statusBadge}
                             </div>
                             <small class="text-muted">
-                                <i class="fas fa-map-marker-alt"></i> ${vehicle.distance} km<br>
-                                <i class="fas fa-battery-full"></i> ${vehicle.battery}%
+                                <i class="fas fa-map-marker-alt"></i> ${
+                                  vehicle.distance
+                                } km<br>
+                                <i class="fas fa-battery-full"></i> ${
+                                  vehicle.battery
+                                }%
                             </small>
                             <div class="mt-2">
-                                ${canRent ? `
+                                ${
+                                  canRent
+                                    ? `
                                     <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary text-white" onclick="event.stopPropagation();">Thuê xe</a>
                                     <button class="btn btn-sm btn-info text-white btn-sm" onclick="event.stopPropagation(); showDirections(${vehicle.latitude}, ${vehicle.longitude}, '${vehicle.brand} ${vehicle.model}');">
                                         <i class="fas fa-route"></i>
                                     </button>
-                                ` : '<button class="btn btn-sm btn-secondary" disabled>Không khả dụng</button>'}
+                                `
+                                    : '<button class="btn btn-sm btn-secondary" disabled>Không khả dụng</button>'
+                                }
                             </div>
                         </div>
                     </div>
                 `;
-            });
-        })
-        .catch(error => {
-            console.error('Error fetching vehicles:', error);
-            document.getElementById('vehicleList').innerHTML = '<p class="text-danger">Lỗi khi tải dữ liệu xe</p>';
         });
-}
+      })
+      .catch((error) => {
+        console.error("Error fetching vehicles:", error);
+        document.getElementById("vehicleList").innerHTML =
+          '<p class="text-danger">Lỗi khi tải dữ liệu xe</p>';
+      });
+  }
 
-function getVehicleIcon(type) {
+  function getVehicleIcon(type) {
     const iconMap = {
-        'bike': 'fa-bicycle',
-        'motorbike': 'fa-motorcycle',
-        'ebike': 'fa-bicycle',
-        'scooter': 'fa-motorcycle',
-        'car': 'fa-car'
+      bike: "fa-bicycle",
+      motorbike: "fa-motorcycle",
+      ebike: "fa-bicycle",
+      scooter: "fa-motorcycle",
+      car: "fa-car",
     };
-    
-    const icon = iconMap[type] || 'fa-car';
-    
+
+    const icon = iconMap[type] || "fa-car";
+
     return L.divIcon({
-        html: `<div class="vehicle-icon ${type}"><i class="fas ${icon}"></i></div>`,
-        className: 'custom-div-icon',
-        iconSize: [45, 45],
-        iconAnchor: [22, 22],
-        popupAnchor: [0, -22]
+      html: `<div class="vehicle-icon ${type}"><i class="fas ${icon}"></i></div>`,
+      className: "custom-div-icon",
+      iconSize: [45, 45],
+      iconAnchor: [22, 22],
+      popupAnchor: [0, -22],
     });
-}
+  }
 
-function getVehicleIconByStatus(type, status) {
+  function getVehicleIconByStatus(type, status) {
     const iconMap = {
-        'bike': 'fa-bicycle',
-        'motorbike': 'fa-motorcycle',
-        'ebike': 'fa-bicycle',
-        'scooter': 'fa-motorcycle',
-        'car': 'fa-car'
+      bike: "fa-bicycle",
+      motorbike: "fa-motorcycle",
+      ebike: "fa-bicycle",
+      scooter: "fa-motorcycle",
+      car: "fa-car",
     };
-    
-    const icon = iconMap[type] || 'fa-car';
-    
+
+    const icon = iconMap[type] || "fa-car";
+
     // Change icon color based on status
-    let statusClass = 'available';
-    if (status === 'reserved') statusClass = 'reserved';
-    else if (status === 'in_use') statusClass = 'in-use';
-    else if (status === 'maintenance') statusClass = 'maintenance';
-    
-    return L.divIcon({
-        html: `<div class="vehicle-icon ${type} ${statusClass}"><i class="fas ${icon}"></i></div>`,
-        className: 'custom-div-icon',
-        iconSize: [45, 45],
-        iconAnchor: [22, 22],
-        popupAnchor: [0, -22]
-    });
-}
+    let statusClass = "available";
+    if (status === "reserved") statusClass = "reserved";
+    else if (status === "in_use") statusClass = "in-use";
+    else if (status === "maintenance") statusClass = "maintenance";
 
-function getVehicleTypeName(type) {
+    return L.divIcon({
+      html: `<div class="vehicle-icon ${type} ${statusClass}"><i class="fas ${icon}"></i></div>`,
+      className: "custom-div-icon",
+      iconSize: [45, 45],
+      iconAnchor: [22, 22],
+      popupAnchor: [0, -22],
+    });
+  }
+
+  function getVehicleTypeName(type) {
     const names = {
-        'bike': 'Xe đạp',
-        'motorbike': 'Xe máy',
-        'ebike': 'Xe đạp điện',
-        'scooter': 'Scooter điện',
-        'car': 'Ô tô'
+      bike: "Xe đạp",
+      motorbike: "Xe máy",
+      ebike: "Xe đạp điện",
+      scooter: "Scooter điện",
+      car: "Ô tô",
     };
     return names[type] || type;
-}
+  }
 
-// Show directions from user to vehicle using OSRM (FREE!)
-function showDirections(vehicleLat, vehicleLng, vehicleName) {
+  // Show directions from user to vehicle using OSRM (FREE!)
+  function showDirections(vehicleLat, vehicleLng, vehicleName) {
     if (!userLocation) {
-        alert('Không thể lấy vị trí của bạn');
-        return;
+      alert("Không thể lấy vị trí của bạn");
+      return;
     }
-    
+
     // Remove existing route
     if (routingControl) {
-        map.removeControl(routingControl);
+      map.removeControl(routingControl);
     }
-    
+
     // Create routing control with OSRM (free routing service)
     routingControl = L.Routing.control({
-        waypoints: [
-            L.latLng(userLocation.lat, userLocation.lng),
-            L.latLng(vehicleLat, vehicleLng)
+      waypoints: [
+        L.latLng(userLocation.lat, userLocation.lng),
+        L.latLng(vehicleLat, vehicleLng),
+      ],
+      routeWhileDragging: false,
+      showAlternatives: false,
+      addWaypoints: false,
+      router: L.Routing.osrmv1({
+        serviceUrl: "https://router.project-osrm.org/route/v1",
+      }),
+      lineOptions: {
+        styles: [
+          {
+            color: "#2196F3",
+            opacity: 0.8,
+            weight: 6,
+          },
         ],
-        routeWhileDragging: false,
-        showAlternatives: false,
-        addWaypoints: false,
-        router: L.Routing.osrmv1({
-            serviceUrl: 'https://router.project-osrm.org/route/v1'
-        }),
-        lineOptions: {
-            styles: [{
-                color: '#2196F3',
-                opacity: 0.8,
-                weight: 6
-            }]
-        },
-        createMarker: function() { return null; }, // Hide default markers
-        show: false // Hide instructions panel
+      },
+      createMarker: function () {
+        return null;
+      }, // Hide default markers
+      show: false, // Hide instructions panel
     }).addTo(map);
-    
+
     // Listen for route found
-    routingControl.on('routesfound', function(e) {
-        const route = e.routes[0];
-        const distance = (route.summary.totalDistance / 1000).toFixed(2);
-        const duration = Math.round(route.summary.totalTime / 60);
-        
-        alert(`🚗 Chỉ đường đến ${vehicleName}\n\n📍 Khoảng cách: ${distance} km\n⏱️ Thời gian dự kiến: ${duration} phút`);
+    routingControl.on("routesfound", function (e) {
+      const route = e.routes[0];
+      const distance = (route.summary.totalDistance / 1000).toFixed(2);
+      const duration = Math.round(route.summary.totalTime / 60);
+
+      alert(
+        `🚗 Chỉ đường đến ${vehicleName}\n\n📍 Khoảng cách: ${distance} km\n⏱️ Thời gian dự kiến: ${duration} phút`
+      );
     });
-}
+  }
 
-// Zoom to specific vehicle marker
-function zoomToVehicle(index) {
+  // Zoom to specific vehicle marker
+  function zoomToVehicle(index) {
     if (index >= 0 && index < vehicleMarkers.length) {
-        const marker = vehicleMarkers[index];
-        map.setView(marker.getLatLng(), 17);
-        marker.openPopup();
+      const marker = vehicleMarkers[index];
+      map.setView(marker.getLatLng(), 17);
+      marker.openPopup();
     }
-}
+  }
 
-// Event listeners
-document.getElementById('searchBtn').addEventListener('click', searchVehicles);
-document.getElementById('radiusFilter').addEventListener('input', function() {
-    document.getElementById('radiusValue').textContent = this.value + ' km';
-});
+  // Event listeners
+  document
+    .getElementById("searchBtn")
+    .addEventListener("click", searchVehicles);
+  document
+    .getElementById("radiusFilter")
+    .addEventListener("input", function () {
+      document.getElementById("radiusValue").textContent = this.value + " km";
+    });
 </script>
 {% endblock %}

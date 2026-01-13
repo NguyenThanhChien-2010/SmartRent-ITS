@@ -163,6 +163,26 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
               >
                 <i class="fas fa-edit"></i> Cập nhật
               </button>
+              {% else %}
+              <!-- User actions -->
+              {% if alert.status == 'open' %}
+              <div class="mt-2">
+                <button
+                  class="btn btn-sm btn-warning w-100 mb-1"
+                  data-bs-toggle="modal"
+                  data-bs-target="#editAlertModal"
+                  onclick="loadEditAlert({{ alert.id }}, '{{ alert.alert_type }}', '{{ alert.severity }}', '{{ alert.description|replace('"', '&quot;') }}')"
+                >
+                  <i class="fas fa-edit"></i> Chỉnh sửa
+                </button>
+                <button
+                  class="btn btn-sm btn-danger w-100"
+                  onclick="deleteAlert({{ alert.id }}, '{{ alert.alert_code }}')"
+                >
+                  <i class="fas fa-trash"></i> Xóa
+                </button>
+              </div>
+              {% endif %}
               {% endif %}
             </div>
           </div>
@@ -327,7 +347,12 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
             </label>
             <select class="form-select" id="vehicle_id" name="vehicle_id">
               <option value="">-- Không có --</option>
-              <!-- Will be populated dynamically -->
+              {% for vehicle in user_vehicles %}
+              <option value="{{ vehicle.id }}">
+                {{ vehicle.vehicle_code }} - {{ vehicle.brand }} {{
+                vehicle.model }}
+              </option>
+              {% endfor %}
             </select>
             <div class="form-text">
               Chọn phương tiện nếu sự cố liên quan đến chuyến đi hiện tại
@@ -358,6 +383,94 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
           onclick="submitEmergency()"
         >
           <i class="fas fa-paper-plane"></i> Gửi cảnh báo khẩn cấp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Alert Modal -->
+<div
+  class="modal fade"
+  id="editAlertModal"
+  tabindex="-1"
+  aria-labelledby="editAlertModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="editAlertModalLabel">
+          <i class="fas fa-edit"></i> Chỉnh sửa cảnh báo
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Lưu ý:</strong> Bạn chỉ có thể chỉnh sửa cảnh báo khi nó vẫn ở trạng thái "Đang mở".
+        </div>
+
+        <form>
+          <input type="hidden" id="editAlertId" />
+
+          <div class="mb-3">
+            <label for="editAlertType" class="form-label">
+              <i class="fas fa-tag"></i> Loại khẩn cấp *
+            </label>
+            <select
+              class="form-select"
+              id="editAlertType"
+              name="alert_type"
+              required
+            >
+              <option value="">-- Chọn loại --</option>
+              <option value="accident">Tai nạn giao thông</option>
+              <option value="breakdown">Hỏng hóc phương tiện</option>
+              <option value="theft">Mất cắp / Đe dọa</option>
+              <option value="medical">Cấp cứu y tế</option>
+              <option value="emergency">Khẩn cấp khác</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="editSeverity" class="form-label">
+              <i class="fas fa-exclamation-circle"></i> Mức độ nghiêm trọng *
+            </label>
+            <select class="form-select" id="editSeverity" name="severity" required>
+              <option value="low">Thấp</option>
+              <option value="medium">Trung bình</option>
+              <option value="high">Cao</option>
+              <option value="critical">Cực kỳ nghiêm trọng</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="editDescription" class="form-label">
+              <i class="fas fa-comment"></i> Mô tả tình huống *
+            </label>
+            <textarea
+              class="form-control"
+              id="editDescription"
+              name="description"
+              rows="3"
+              placeholder="Mô tả chi tiết tình huống khẩn cấp..."
+              required
+            ></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Đóng
+        </button>
+        <button type="button" class="btn btn-warning" onclick="submitEditAlert()">
+          <i class="fas fa-check"></i> Cập nhật
         </button>
       </div>
     </div>
@@ -514,5 +627,86 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
     .addEventListener("shown.bs.modal", function () {
       getCurrentLocation();
     });
+
+  // Load alert data for editing
+  function loadEditAlert(alertId, alertType, severity, description) {
+    document.getElementById("editAlertId").value = alertId;
+    document.getElementById("editAlertType").value = alertType;
+    document.getElementById("editSeverity").value = severity;
+    document.getElementById("editDescription").value = description;
+  }
+
+  // Submit edit alert
+  function submitEditAlert() {
+    const alertId = document.getElementById("editAlertId").value;
+    const alertType = document.getElementById("editAlertType").value;
+    const severity = document.getElementById("editSeverity").value;
+    const description = document.getElementById("editDescription").value;
+
+    if (!alertType || !severity || !description) {
+      alert("Vui lòng điền đầy đủ thông tin!");
+      return;
+    }
+
+    const data = {
+      alert_type: alertType,
+      severity: severity,
+      description: description,
+    };
+
+    const submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang cập nhật...';
+
+    fetch(`/emergency/${alertId}/edit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Đã cập nhật cảnh báo!");
+          location.reload();
+        } else {
+          alert("Lỗi: " + (data.error || "Không thể cập nhật"));
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-check"></i> Cập nhật';
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("Đã có lỗi xảy ra: " + error.message);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> Cập nhật';
+      });
+  }
+
+  // Delete alert
+  function deleteAlert(alertId, alertCode) {
+    if (confirm(`Bạn có chắc chắn muốn xóa cảnh báo ${alertCode}? Hành động này không thể hoàn tác.`)) {
+      fetch(`/emergency/${alertId}/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert("Đã xóa cảnh báo!");
+            location.reload();
+          } else {
+            alert("Lỗi: " + (data.error || "Không thể xóa"));
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("Đã có lỗi xảy ra: " + error.message);
+        });
+    }
+  }
 </script>
 {% endblock %}

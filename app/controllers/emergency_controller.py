@@ -117,7 +117,10 @@ def my_alerts():
             .order_by(EmergencyAlert.created_at.desc()).all()
         is_admin = False
     
-    return render_template('emergency/my_alerts.html', alerts=alerts, is_admin=is_admin)
+    # Get all available vehicles for the emergency form
+    user_vehicles = Vehicle.query.all()
+    
+    return render_template('emergency/my_alerts.html', alerts=alerts, is_admin=is_admin, user_vehicles=user_vehicles)
 
 
 @emergency_bp.route('/<int:alert_id>/status')
@@ -174,3 +177,68 @@ def update_alert(alert_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+
+@emergency_bp.route('/<int:alert_id>/edit', methods=['POST'])
+@login_required
+def edit_alert(alert_id):
+    """Chỉnh sửa cảnh báo (User only, status must be 'open')"""
+    alert = EmergencyAlert.query.get_or_404(alert_id)
+    
+    # Only the alert creator can edit, and only if status is 'open'
+    if alert.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if alert.status != 'open':
+        return jsonify({'error': 'Chỉ có thể chỉnh sửa cảnh báo ở trạng thái "Đang mở"'}), 400
+    
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    try:
+        # Update fields
+        if 'alert_type' in data:
+            alert.alert_type = data['alert_type']
+        if 'severity' in data:
+            alert.severity = data['severity']
+        if 'description' in data:
+            alert.description = data['description']
+        
+        alert.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Đã cập nhật cảnh báo'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@emergency_bp.route('/<int:alert_id>/delete', methods=['POST'])
+@login_required
+def delete_alert(alert_id):
+    """Xóa cảnh báo (User only, status must be 'open')"""
+    alert = EmergencyAlert.query.get_or_404(alert_id)
+    
+    # Only the alert creator can delete, and only if status is 'open'
+    if alert.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if alert.status != 'open':
+        return jsonify({'error': 'Chỉ có thể xóa cảnh báo ở trạng thái "Đang mở"'}), 400
+    
+    try:
+        alert_code = alert.alert_code
+        db.session.delete(alert)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Đã xóa cảnh báo {alert_code}'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
