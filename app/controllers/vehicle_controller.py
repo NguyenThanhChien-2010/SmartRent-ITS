@@ -30,7 +30,7 @@ def list_vehicles():
 @login_required
 def vehicle_map():
     """Hiển thị bản đồ phương tiện (GIS)"""
-    return render_template('vehicles/map.html', mapbox_token=current_app.config.get('MAPBOX_ACCESS_TOKEN', ''))
+    return render_template('vehicles/map.html')
 
 
 @vehicle_bp.route('/api/nearby')

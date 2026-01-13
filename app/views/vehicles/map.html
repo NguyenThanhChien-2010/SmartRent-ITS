@@ -55,8 +55,11 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Leaflet Routing Machine CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
 <style>
-/* Remove default Leaflet marker styles */
+/* Vehicle marker styles */
 .custom-div-icon {
     background: transparent !important;
     border: none !important;
@@ -81,13 +84,6 @@
 .vehicle-icon.in-use { border-color: #F44336; color: #F44336; opacity: 0.7; }
 .vehicle-icon.maintenance { border-color: #9E9E9E; color: #9E9E9E; opacity: 0.6; }
 
-/* Type-based colors (for available vehicles) */
-.vehicle-icon.bike.available { border-color: #4CAF50; color: #4CAF50; }
-.vehicle-icon.motorbike.available { border-color: #FF9800; color: #FF9800; }
-.vehicle-icon.ebike.available { border-color: #9C27B0; color: #9C27B0; }
-.vehicle-icon.scooter { border-color: #00BCD4; color: #00BCD4; }
-.vehicle-icon.car { border-color: #F44336; color: #F44336; }
-
 .user-icon {
     background: #2196F3;
     border: 3px solid #fff;
@@ -107,33 +103,33 @@
     transform: translateY(-2px);
     transition: all 0.2s ease;
 }
+
+/* Hide default routing control */
+.leaflet-routing-container {
+    display: none;
+}
 </style>
+
+<!-- Leaflet Routing Machine JS -->
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
 let map;
 let userMarker;
 let vehicleMarkers = [];
 let userLocation = null;
+let routingControl = null;
 
 // Initialize map
 document.addEventListener('DOMContentLoaded', function() {
     // Default location (Ho Chi Minh City)
     map = L.map('map').setView([10.8231, 106.6297], 13);
     
-    const mapboxToken = {{ mapbox_token|tojson }};
-    if (mapboxToken) {
-        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=' + mapboxToken, {
-            attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, © <a href="https://www.mapbox.com/">Mapbox</a>',
-            maxZoom: 20,
-            id: 'mapbox/streets-v11',
-            tileSize: 512,
-            zoomOffset: -1
-        }).addTo(map);
-    } else {
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-    }
+    // Add OpenStreetMap tiles (FREE!)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
     
     // Get user location
     if (navigator.geolocation) {
@@ -145,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             map.setView([userLocation.lat, userLocation.lng], 15);
             
-            // Add user marker with custom icon
+            // Add user marker
             const userIcon = L.divIcon({
                 html: '<div class="user-icon"><i class="fas fa-user"></i></div>',
                 className: 'custom-div-icon',
@@ -173,7 +169,6 @@ function searchVehicles() {
     const vehicleType = document.getElementById('vehicleTypeFilter').value;
     const radius = document.getElementById('radiusFilter').value;
     
-    // Add show_all=true to see all vehicles (including non-available)
     fetch(`/vehicles/api/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&type=${vehicleType}&show_all=true`)
         .then(response => response.json())
         .then(data => {
@@ -185,17 +180,15 @@ function searchVehicles() {
             const vehicleList = document.getElementById('vehicleList');
             vehicleList.innerHTML = '';
             
-            // Show debug info
             console.log('Vehicle counts by status:', data.status_counts);
             console.log('Total vehicles found:', data.count);
-            console.log('Available vehicles:', data.available_count);
             
             if (data.vehicles.length === 0) {
                 vehicleList.innerHTML = '<p class="text-muted">Không tìm thấy xe nào</p>';
                 return;
             }
             
-            // Add summary at top
+            // Add summary
             vehicleList.innerHTML = `
                 <div class="alert alert-info py-2 px-2 mb-2">
                     <small>
@@ -208,26 +201,22 @@ function searchVehicles() {
                 </div>
             `;
             
-            data.vehicles.forEach(vehicle => {
+            data.vehicles.forEach((vehicle, index) => {
                 // Get status badge
                 let statusBadge = '';
-                let statusColor = 'success';
                 let canRent = vehicle.status === 'available';
                 
                 if (vehicle.status === 'available') {
                     statusBadge = '<span class="badge bg-success">Khả dụng</span>';
                 } else if (vehicle.status === 'reserved') {
                     statusBadge = '<span class="badge bg-warning">Đã đặt</span>';
-                    statusColor = 'warning';
                 } else if (vehicle.status === 'in_use') {
                     statusBadge = '<span class="badge bg-danger">Đang dùng</span>';
-                    statusColor = 'danger';
                 } else if (vehicle.status === 'maintenance') {
                     statusBadge = '<span class="badge bg-secondary">Bảo trì</span>';
-                    statusColor = 'secondary';
                 }
                 
-                // Add marker to map with custom icon based on status
+                // Add marker to map
                 const icon = getVehicleIconByStatus(vehicle.type, vehicle.status);
                 const marker = L.marker([vehicle.latitude, vehicle.longitude], { icon })
                     .addTo(map)
@@ -240,19 +229,23 @@ function searchVehicles() {
                             <i class="fas fa-map-marker-alt text-danger"></i> ${vehicle.distance} km<br>
                             <i class="fas fa-battery-full text-success"></i> Pin: ${vehicle.battery}%<br>
                             <i class="fas fa-money-bill-wave text-warning"></i> ${vehicle.price_per_minute} VND/phút<br>
-                            ${canRent ? `<a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary mt-2 w-100 text-white" style="text-decoration: none;">
-                                <i class="fas fa-car"></i> Chi tiết & Thuê xe
-                            </a>` : '<button class="btn btn-sm btn-secondary mt-2 w-100" disabled>Không khả dụng</button>'}
+                            ${canRent ? `
+                                <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary mt-2 w-100 text-white" style="text-decoration: none;">
+                                    <i class="fas fa-car"></i> Chi tiết & Thuê xe
+                                </a>
+                                <button class="btn btn-sm btn-info mt-1 w-100" onclick="showDirections(${vehicle.latitude}, ${vehicle.longitude}, '${vehicle.brand} ${vehicle.model}')">
+                                    <i class="fas fa-route"></i> Chỉ đường
+                                </button>
+                            ` : '<button class="btn btn-sm btn-secondary mt-2 w-100" disabled>Không khả dụng</button>'}
                         </div>
                     `);
                 
                 vehicleMarkers.push(marker);
                 
-                // Add to list with index for click event
-                const markerIndex = vehicleMarkers.length - 1;
+                // Add to list
                 const cardOpacity = canRent ? '1' : '0.6';
                 vehicleList.innerHTML += `
-                    <div class="card mb-2 vehicle-card" onclick="zoomToVehicle(${markerIndex})" style="cursor: pointer; opacity: ${cardOpacity};">
+                    <div class="card mb-2 vehicle-card" onclick="zoomToVehicle(${index})" style="cursor: pointer; opacity: ${cardOpacity};">
                         <div class="card-body p-2">
                             <div class="d-flex justify-content-between align-items-start">
                                 <h6 class="mb-1">${vehicle.brand} ${vehicle.model}</h6>
@@ -263,7 +256,12 @@ function searchVehicles() {
                                 <i class="fas fa-battery-full"></i> ${vehicle.battery}%
                             </small>
                             <div class="mt-2">
-                                ${canRent ? `<a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary text-white" onclick="event.stopPropagation();">Thuê xe</a>` : '<button class="btn btn-sm btn-secondary" disabled>Không khả dụng</button>'}
+                                ${canRent ? `
+                                    <a href="/vehicles/${vehicle.id}" class="btn btn-sm btn-primary text-white" onclick="event.stopPropagation();">Thuê xe</a>
+                                    <button class="btn btn-sm btn-info text-white btn-sm" onclick="event.stopPropagation(); showDirections(${vehicle.latitude}, ${vehicle.longitude}, '${vehicle.brand} ${vehicle.model}');">
+                                        <i class="fas fa-route"></i>
+                                    </button>
+                                ` : '<button class="btn btn-sm btn-secondary" disabled>Không khả dụng</button>'}
                             </div>
                         </div>
                     </div>
@@ -331,6 +329,51 @@ function getVehicleTypeName(type) {
         'car': 'Ô tô'
     };
     return names[type] || type;
+}
+
+// Show directions from user to vehicle using OSRM (FREE!)
+function showDirections(vehicleLat, vehicleLng, vehicleName) {
+    if (!userLocation) {
+        alert('Không thể lấy vị trí của bạn');
+        return;
+    }
+    
+    // Remove existing route
+    if (routingControl) {
+        map.removeControl(routingControl);
+    }
+    
+    // Create routing control with OSRM (free routing service)
+    routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(userLocation.lat, userLocation.lng),
+            L.latLng(vehicleLat, vehicleLng)
+        ],
+        routeWhileDragging: false,
+        showAlternatives: false,
+        addWaypoints: false,
+        router: L.Routing.osrmv1({
+            serviceUrl: 'https://router.project-osrm.org/route/v1'
+        }),
+        lineOptions: {
+            styles: [{
+                color: '#2196F3',
+                opacity: 0.8,
+                weight: 6
+            }]
+        },
+        createMarker: function() { return null; }, // Hide default markers
+        show: false // Hide instructions panel
+    }).addTo(map);
+    
+    // Listen for route found
+    routingControl.on('routesfound', function(e) {
+        const route = e.routes[0];
+        const distance = (route.summary.totalDistance / 1000).toFixed(2);
+        const duration = Math.round(route.summary.totalTime / 60);
+        
+        alert(`🚗 Chỉ đường đến ${vehicleName}\n\n📍 Khoảng cách: ${distance} km\n⏱️ Thời gian dự kiến: ${duration} phút`);
+    });
 }
 
 // Zoom to specific vehicle marker
