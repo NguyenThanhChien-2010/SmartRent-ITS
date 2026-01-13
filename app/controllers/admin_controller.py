@@ -501,6 +501,10 @@ def iot_monitor():
 def trip_heatmap():
     """Trip heatmap analysis"""
     from flask import current_app
+    from collections import Counter
+    from datetime import datetime
+    import requests
+    import time
     
     # Get all completed trips with coordinates
     trips = Trip.query.filter(
@@ -511,23 +515,85 @@ def trip_heatmap():
     
     # Prepare heatmap data
     heatmap_data = []
+    location_counter = Counter()
+    hour_counter = Counter()
+    
     for trip in trips:
         if trip.start_latitude and trip.start_longitude:
+            lat = float(trip.start_latitude)
+            lng = float(trip.start_longitude)
             heatmap_data.append({
-                'lat': float(trip.start_latitude),
-                'lng': float(trip.start_longitude),
+                'lat': lat,
+                'lng': lng,
                 'intensity': 1
             })
+            # Count locations (rounded to 3 decimals for grouping)
+            location_key = f"{lat:.3f},{lng:.3f}"
+            location_counter[location_key] += 1
+            
         if trip.end_latitude and trip.end_longitude:
+            lat = float(trip.end_latitude)
+            lng = float(trip.end_longitude)
             heatmap_data.append({
-                'lat': float(trip.end_latitude),
-                'lng': float(trip.end_longitude),
+                'lat': lat,
+                'lng': lng,
                 'intensity': 1
             })
+            location_key = f"{lat:.3f},{lng:.3f}"
+            location_counter[location_key] += 1
+        
+        # Count hours
+        if trip.start_time:
+            hour = trip.start_time.hour
+            hour_counter[hour] += 1
     
+    # Find hottest area with reverse geocoding
+    hottest_area = "Chưa có dữ liệu"
+    if location_counter:
+        hottest_location, hottest_count = location_counter.most_common(1)[0]
+        lat, lng = hottest_location.split(',')
+        
+        # Reverse geocoding using Nominatim (OpenStreetMap - FREE!)
+        try:
+            url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lng}&format=json&addressdetails=1"
+            headers = {'User-Agent': 'SmartRent-ITS/1.0'}
+            response = requests.get(url, headers=headers, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                address = data.get('address', {})
+                
+                # Build readable address
+                parts = []
+                if address.get('road'):
+                    parts.append(address['road'])
+                if address.get('suburb') or address.get('neighbourhood'):
+                    parts.append(address.get('suburb') or address.get('neighbourhood'))
+                if address.get('city_district'):
+                    parts.append(address.get('city_district'))
+                if address.get('city'):
+                    parts.append(address.get('city'))
+                
+                address_str = ", ".join(parts) if parts else data.get('display_name', f"Tọa độ {lat}, {lng}")
+                hottest_area = f"{address_str} ({hottest_count} chuyến)"
+            else:
+                hottest_area = f"Tọa độ {lat}, {lng} ({hottest_count} chuyến)"
+        except Exception as e:
+            print(f"Reverse geocoding error: {e}")
+            hottest_area = f"Tọa độ {lat}, {lng} ({hottest_count} chuyến)"
+    
+    # Find peak hours
+    peak_hours = "Chưa có dữ liệu"
+    if hour_counter:
+        top_hours = hour_counter.most_common(3)
+        peak_hours_list = [f"{h}h ({c} chuyến)" for h, c in top_hours]
+        peak_hours = ", ".join(peak_hours_list)
     
     return render_template('admin/heatmap.html',
-                         heatmap_data=heatmap_data)
+                         heatmap_data=heatmap_data,
+                         hottest_area=hottest_area,
+                         peak_hours=peak_hours,
+                         total_trips=len(trips))
 
 
 @admin_bp.route('/vehicles/fix-orphaned', methods=['POST'])

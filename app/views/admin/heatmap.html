@@ -98,7 +98,7 @@
                 <h6><i class="fas fa-chart-bar"></i> Thống kê</h6>
                 <hr>
                 <div class="mb-3">
-                    <h4 id="total-trips">{{ heatmap_data|length // 2 }}</h4>
+                    <h4 id="total-trips">{{ total_trips or 0 }}</h4>
                     <small class="text-muted">Tổng chuyến đi</small>
                 </div>
                 <div class="mb-3">
@@ -134,15 +134,15 @@
 
             <div class="card mt-3">
                 <div class="card-header bg-info text-white">
-                    <i class="fas fa-lightbulb"></i> Insight
+                    <i class="fas fa-lightbulb"></i> Insight (Dữ liệu thực)
                 </div>
                 <div class="card-body">
                     <small>
                         <strong>Vùng nóng nhất:</strong><br>
-                        <span id="hottest-area">Quận 1, TP.HCM</span>
+                        <span id="hottest-area">{{ hottest_area or 'Chưa có dữ liệu' }}</span>
                         <hr>
                         <strong>Giờ cao điểm:</strong><br>
-                        7-9h sáng, 17-19h chiều
+                        <span id="peak-hours">{{ peak_hours or 'Chưa có dữ liệu' }}</span>
                         <hr>
                         <strong>Gợi ý:</strong><br>
                         Tăng số xe ở vùng màu đỏ để tối ưu doanh thu
@@ -164,10 +164,11 @@ let rawData = {{ heatmap_data|tojson }};
 function initMap() {
     map = L.map('heatmap').setView([10.8231, 106.6297], 12);
     
-    // Dark style OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 18
+    // Dark theme for better heatmap visibility
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
     }).addTo(map);
     
     updateHeatmap(rawData);
