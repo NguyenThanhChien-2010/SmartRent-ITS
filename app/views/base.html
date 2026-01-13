@@ -38,15 +38,17 @@
 
     {% block extra_css %}{% endblock %}
   </head>
-  <body>
+  <body style="padding-top: 56px; margin: 0">
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <nav
+      class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm fixed-top"
+    >
       <div class="container">
         <a class="navbar-brand fw-bold me-4" href="{{ url_for('main.index') }}">
           <i class="fas fa-car"></i> SmartRent
         </a>
         <button
-          class="navbar-toggler"
+          class="navbar-toggler border-0"
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#navbarNav"
@@ -162,12 +164,15 @@
                 </li>
                 {% endif %}
                 <li><hr class="dropdown-divider" /></li>
-                
+
                 <!-- Action Buttons -->
                 <li class="px-3 py-2">
                   <div class="d-grid gap-2">
                     {% if unread_count > 0 %}
-                    <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()">
+                    <button
+                      class="btn btn-sm btn-outline-primary"
+                      onclick="markAllAsRead()"
+                    >
                       <i class="fas fa-check-double"></i> Đánh dấu tất cả đã đọc
                     </button>
                     {% endif %}
@@ -207,13 +212,12 @@
               <a
                 class="nav-link px-3"
                 href="{{ url_for('admin.dashboard') }}"
-                title="Quản trị"
+                title="Dashboard"
               >
-                <i class="fas fa-chart-line me-1"></i>
-                <span class="d-none d-lg-inline">Dashboard</span>
+                <i class="fas fa-chart-line fa-lg"></i>
               </a>
             </li>
-            
+
             <!-- ITS Analytics Dropdown -->
             <li class="nav-item dropdown">
               <a
@@ -222,24 +226,33 @@
                 id="itsDropdown"
                 role="button"
                 data-bs-toggle="dropdown"
+                title="ITS Analytics"
               >
-                <i class="fas fa-satellite-dish me-1"></i>
-                <span class="d-none d-lg-inline">ITS Analytics</span>
+                <i class="fas fa-satellite-dish fa-lg"></i>
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                  <a class="dropdown-item" href="{{ url_for('admin.iot_monitor') }}">
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin.iot_monitor') }}"
+                  >
                     <i class="fas fa-tv me-2"></i>IoT Monitor Real-time
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="{{ url_for('admin.trip_heatmap') }}">
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin.trip_heatmap') }}"
+                  >
                     <i class="fas fa-fire me-2"></i>Trip Heatmap
                   </a>
                 </li>
                 <li><hr class="dropdown-divider" /></li>
                 <li>
-                  <a class="dropdown-item" href="{{ url_for('admin.analytics') }}">
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin.analytics') }}"
+                  >
                     <i class="fas fa-chart-pie me-2"></i>Analytics
                   </a>
                 </li>
@@ -314,31 +327,41 @@
       </div>
     </nav>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %} {% if
-    messages %}
-    <div class="container mt-3">
-      {% for category, message in messages %}
+    <!-- Toast Container for Notifications -->
+    <div
+      class="toast-container position-fixed top-0 end-0 p-3"
+      style="z-index: 9999; margin-top: 60px"
+    >
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
       <div
-        class="alert alert-{{ category }} alert-dismissible fade show"
+        class="toast show"
         role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+        data-bs-autohide="true"
+        data-bs-delay="500"
       >
-        {{ message }}
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-        ></button>
+        <div class="toast-header bg-{{ category }} text-white">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong class="me-auto">Thông báo</strong>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="toast"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="toast-body">{{ message }}</div>
       </div>
-      {% endfor %}
+      {% endfor %} {% endif %} {% endwith %}
     </div>
-    {% endif %} {% endwith %}
 
     <!-- Main Content -->
     <main>{% block content %}{% endblock %}</main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white mt-5 py-4">
+    <footer class="bg-dark text-white py-4" style="margin-top: 0">
       <div class="container">
         <div class="row">
           <div class="col-md-4">
@@ -395,47 +418,59 @@
 
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    
+
     <!-- Notification Functions -->
     <script>
       function markAllAsRead() {
-        if (!confirm('Đánh dấu tất cả thông báo đã đọc?')) {
+        if (!confirm("Đánh dấu tất cả thông báo đã đọc?")) {
           return;
         }
-        
-        fetch('/notifications/mark-all-read', {
-          method: 'POST',
+
+        fetch("/notifications/mark-all-read", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
-          }
+            "Content-Type": "application/json",
+          },
         })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // Reload to update badge count
-            location.reload();
-          } else {
-            alert('Lỗi: ' + (data.error || 'Không thể đánh dấu'));
-          }
-        })
-        .catch(error => {
-          alert('Lỗi kết nối: ' + error.message);
-        });
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              // Reload to update badge count
+              location.reload();
+            } else {
+              alert("Lỗi: " + (data.error || "Không thể đánh dấu"));
+            }
+          })
+          .catch((error) => {
+            alert("Lỗi kết nối: " + error.message);
+          });
       }
-      
+
+      // Auto-hide toast notifications after 2 seconds
+      document.addEventListener("DOMContentLoaded", function () {
+        const toastElements = document.querySelectorAll(".toast");
+        toastElements.forEach((toastEl) => {
+          const toast = new bootstrap.Toast(toastEl, {
+            autohide: true,
+            delay: 2000,
+          });
+          toast.show();
+        });
+      });
+
       // Auto-mark notification as read when clicked
-      document.addEventListener('DOMContentLoaded', function() {
-        const notifItems = document.querySelectorAll('[data-notification-id]');
-        notifItems.forEach(item => {
-          item.addEventListener('click', function(e) {
+      document.addEventListener("DOMContentLoaded", function () {
+        const notifItems = document.querySelectorAll("[data-notification-id]");
+        notifItems.forEach((item) => {
+          item.addEventListener("click", function (e) {
             const notifId = this.dataset.notificationId;
-            const isRead = this.dataset.isRead === 'true';
-            
+            const isRead = this.dataset.isRead === "true";
+
             if (!isRead && notifId) {
               // Mark as read in background
               fetch(`/notifications/${notifId}/mark-read`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
               });
             }
           });
