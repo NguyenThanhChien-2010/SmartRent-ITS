@@ -133,8 +133,8 @@ def login():
 def logout():
     """Đăng xuất"""
     logout_user()
-    flash('Đã đăng xuất thành công', 'info')
-    return redirect(url_for('auth.login'))
+    flash('Đăng xuất thành công!', 'success')
+    return redirect(url_for('main.index'))
 
 
 @auth_bp.route('/profile')

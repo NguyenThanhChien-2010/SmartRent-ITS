@@ -1,38 +1,119 @@
-{% extends "base.html" %}
-
-{% block title %}Đăng nhập - SmartRent{% endblock %}
-
+{% extends "base.html" %} {% block title %}Đăng nhập - SmartRent{% endblock %}
 {% block content %}
-<div class="container mt-5">
+<div class="min-vh-100 d-flex align-items-center py-5" style="background: #f8f9fa;">
+  <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4><i class="fas fa-sign-in-alt"></i> Đăng nhập</h4>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('auth.login') }}">
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Mật khẩu</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                            <label class="form-check-label" for="remember">Ghi nhớ đăng nhập</label>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
-                    </form>
-                    <hr>
-                    <div class="text-center">
-                        <p>Chưa có tài khoản? <a href="{{ url_for('auth.register') }}">Đăng ký ngay</a></p>
-                    </div>
-                </div>
+      <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg border-0" style="border-radius: 20px;">
+          <div class="card-body p-4 p-md-5">
+            <!-- Logo -->
+            <div class="text-center mb-4">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" 
+                   style="width: 70px; height: 70px; background: #0d6efd;">
+                <i class="fas fa-car-side fa-2x text-white"></i>
+              </div>
+              <h3 class="fw-bold mb-2">Đăng nhập</h3>
+              <p class="text-muted small">Chào mừng trở lại SmartRent</p>
             </div>
+
+            <!-- Form -->
+            <form method="POST" action="{{ url_for('auth.login') }}">
+              <div class="mb-3">
+                <label for="email" class="form-label fw-semibold small">Email</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-end-0">
+                    <i class="fas fa-envelope text-muted"></i>
+                  </span>
+                  <input
+                    type="email"
+                    class="form-control border-start-0 ps-0"
+                    id="email"
+                    name="email"
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="password" class="form-label fw-semibold small">Mật khẩu</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-end-0">
+                    <i class="fas fa-lock text-muted"></i>
+                  </span>
+                  <input
+                    type="password"
+                    class="form-control border-start-0 border-end-0 ps-0"
+                    id="password"
+                    name="password"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    class="btn btn-light border border-start-0"
+                    type="button"
+                    onclick="togglePassword('password', this)"
+                    style="border-color: #dee2e6 !important;"
+                  >
+                    <i class="fas fa-eye text-muted"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="mb-4 form-check">
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="remember"
+                  name="remember"
+                />
+                <label class="form-check-label small text-muted" for="remember"
+                  >Ghi nhớ đăng nhập</label>
+              </div>
+              
+              <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold shadow-sm mb-3" 
+                      style="border-radius: 12px; background-color: #0d6efd; border-color: #0d6efd; color: white;">
+                <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập
+              </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="position-relative my-4">
+              <hr class="text-muted">
+              <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small">hoặc</span>
+            </div>
+
+            <!-- Register Link -->
+            <div class="text-center">
+              <p class="small mb-0 text-muted">Chưa có tài khoản? 
+                <a href="{{ url_for('auth.register') }}" class="text-primary fw-semibold text-decoration-none">Đăng ký ngay</a>
+              </p>
+            </div>
+          </div>
         </div>
+        
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
+
+<script>
+  function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+    const icon = button.querySelector("i");
+
+    if (input.type === "password") {
+      input.type = "text";
+      icon.classList.remove("fa-eye");
+      icon.classList.add("fa-eye-slash");
+    } else {
+      input.type = "password";
+      icon.classList.remove("fa-eye-slash");
+      icon.classList.add("fa-eye");
+    }
+  }
+</script>
 {% endblock %}
