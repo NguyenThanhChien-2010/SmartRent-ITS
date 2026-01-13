@@ -490,11 +490,9 @@ def iot_monitor():
         'fuel_level': v.fuel_level or 100
     } for v in vehicles]
     
-    mapbox_token = current_app.config.get('MAPBOX_ACCESS_TOKEN', '')
     
     return render_template('admin/iot_monitor.html', 
-                         vehicles=vehicle_data,
-                         mapbox_token=mapbox_token)
+                         vehicles=vehicle_data)
 
 
 @admin_bp.route('/heatmap')
@@ -527,11 +525,9 @@ def trip_heatmap():
                 'intensity': 1
             })
     
-    mapbox_token = current_app.config.get('MAPBOX_ACCESS_TOKEN', '')
     
     return render_template('admin/heatmap.html',
-                         heatmap_data=heatmap_data,
-                         mapbox_token=mapbox_token)
+                         heatmap_data=heatmap_data)
 
 
 @admin_bp.route('/vehicles/fix-orphaned', methods=['POST'])

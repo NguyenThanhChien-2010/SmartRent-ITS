@@ -155,7 +155,6 @@
 {% block extra_js %}
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script>
-const MAPBOX_TOKEN = '{{ mapbox_token }}';
 let map, markers = {};
 let vehicles = {{ vehicles|tojson }};
 
@@ -163,17 +162,10 @@ let vehicles = {{ vehicles|tojson }};
 function initMap() {
     map = L.map('iot-map').setView([10.8231, 106.6297], 13);
     
-    if (MAPBOX_TOKEN) {
-        L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`, {
-            attribution: 'Map data &copy; Mapbox',
-            maxZoom: 18
-        }).addTo(map);
-    } else {
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 18
-        }).addTo(map);
-    }
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18
+    }).addTo(map);
 }
 
 // Get vehicle icon

@@ -157,7 +157,6 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
-const MAPBOX_TOKEN = '{{ mapbox_token }}';
 let map, heatLayer;
 let rawData = {{ heatmap_data|tojson }};
 
@@ -165,17 +164,11 @@ let rawData = {{ heatmap_data|tojson }};
 function initMap() {
     map = L.map('heatmap').setView([10.8231, 106.6297], 12);
     
-    if (MAPBOX_TOKEN) {
-        L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v10/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`, {
-            attribution: 'Map data &copy; Mapbox',
-            maxZoom: 18
-        }).addTo(map);
-    } else {
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 18
-        }).addTo(map);
-    }
+    // Dark style OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18
+    }).addTo(map);
     
     updateHeatmap(rawData);
 }
