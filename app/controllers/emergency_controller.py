@@ -178,6 +178,42 @@ def update_alert(alert_id):
         return jsonify({'error': str(e)}), 500
 
 
+@emergency_bp.route('/api/new-alerts', methods=['GET'])
+@login_required
+def get_new_alerts():
+    """Get new alerts (Admin only) - for real-time notifications"""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get last checked timestamp from query params (optional)
+    last_check = request.args.get('last_check')
+    
+    # Get all open alerts with their details
+    query = EmergencyAlert.query.filter_by(status='open').order_by(EmergencyAlert.created_at.desc())
+    
+    alerts = query.all()
+    
+    alert_list = []
+    for alert in alerts:
+        alert_list.append({
+            'id': alert.id,
+            'alert_code': alert.alert_code,
+            'alert_type': alert.alert_type,
+            'severity': alert.severity,
+            'description': alert.description,
+            'user_name': alert.user.full_name or alert.user.username if alert.user else 'Unknown',
+            'vehicle_info': f"{alert.vehicle.vehicle_code} - {alert.vehicle.brand} {alert.vehicle.model}" if alert.vehicle else 'N/A',
+            'created_at': alert.created_at.isoformat(),
+            'latitude': alert.latitude,
+            'longitude': alert.longitude
+        })
+    
+    return jsonify({
+        'success': True,
+        'alerts': alert_list,
+        'count': len(alert_list)
+    })
+
 @emergency_bp.route('/<int:alert_id>/edit', methods=['POST'])
 @login_required
 def edit_alert(alert_id):

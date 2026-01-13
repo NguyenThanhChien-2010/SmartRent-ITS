@@ -1,6 +1,13 @@
 {% extends "base.html" %} {% block title %} {% if is_admin %}Quản lý cảnh báo
 khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent {% endblock
 %} {% block content %}
+
+<!-- Notification Container (Admin only) -->
+{% if is_admin %}
+<div id="notificationContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; max-width: 400px;">
+</div>
+{% endif %}
+
 <div class="container mt-4">
   <h2>
     <i class="fas fa-exclamation-triangle"></i>
@@ -10,10 +17,10 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
   </h2>
   <hr />
 
-  <!-- Statistics Cards -->
+  <!-- Statistics Cards (Filterable) -->
   <div class="row mb-4">
     <div class="col-md-3">
-      <div class="card text-center">
+      <div class="card text-center alert-filter-card" onclick="filterAlerts('all')" style="cursor: pointer;">
         <div class="card-body">
           <i class="fas fa-bell fa-2x text-warning mb-2"></i>
           <h5 class="card-title">Tổng cảnh báo</h5>
@@ -22,7 +29,7 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card text-center">
+      <div class="card text-center alert-filter-card" onclick="filterAlerts('open')" style="cursor: pointer;">
         <div class="card-body">
           <i class="fas fa-exclamation-circle fa-2x text-danger mb-2"></i>
           <h5 class="card-title">Đang mở</h5>
@@ -33,7 +40,7 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card text-center">
+      <div class="card text-center alert-filter-card" onclick="filterAlerts('resolved')" style="cursor: pointer;">
         <div class="card-body">
           <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
           <h5 class="card-title">Đã giải quyết</h5>
@@ -44,7 +51,7 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card text-center">
+      <div class="card text-center alert-filter-card" onclick="filterAlerts('closed')" style="cursor: pointer;">
         <div class="card-body">
           <i class="fas fa-lock fa-2x text-secondary mb-2"></i>
           <h5 class="card-title">Đã đóng</h5>
@@ -74,9 +81,9 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
     </div>
     <div class="card-body">
       {% if alerts %}
-      <div class="list-group">
+      <div class="list-group" id="alertsList">
         {% for alert in alerts %}
-        <div class="list-group-item">
+        <div class="list-group-item alert-item" data-status="{{ alert.status }}" data-alert-id="{{ alert.id }}">
           <div class="row align-items-center">
             <div class="col-md-1 text-center">
               {% if alert.severity == 'critical' %}
@@ -479,6 +486,128 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
 
 {% endblock %} {% block extra_js %}
 <script>
+  // Real-time alert notification for Admin
+  let lastAlertCheck = new Date();
+  let pollingInterval = null;
+  const isAdmin = {{ 'true' if is_admin else 'false' }};
+  const seenAlerts = new Set();
+
+  function showAlertNotification(alert) {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+
+    // Skip if already shown
+    if (seenAlerts.has(alert.alert_code)) return;
+    seenAlerts.add(alert.alert_code);
+
+    // Determine color based on severity
+    let severityColor = 'warning';
+    let severityIcon = 'fa-exclamation-triangle';
+    let severityText = 'TRUNG BÌNH';
+
+    if (alert.severity === 'critical') {
+      severityColor = 'danger';
+      severityIcon = 'fa-exclamation-circle';
+      severityText = 'CỰC KỲ NGHIÊM TRỌNG';
+    } else if (alert.severity === 'high') {
+      severityColor = 'warning';
+      severityIcon = 'fa-exclamation-triangle';
+      severityText = 'CAO';
+    } else if (alert.severity === 'medium') {
+      severityColor = 'info';
+      severityIcon = 'fa-info-circle';
+      severityText = 'TRUNG BÌNH';
+    } else if (alert.severity === 'low') {
+      severityColor = 'secondary';
+      severityIcon = 'fa-check-circle';
+      severityText = 'THẤP';
+    }
+
+    // Get alert type label
+    let alertTypeLabel = 'SOS';
+    if (alert.alert_type === 'accident') alertTypeLabel = 'Tai nạn';
+    else if (alert.alert_type === 'breakdown') alertTypeLabel = 'Hỏng hóc';
+    else if (alert.alert_type === 'theft') alertTypeLabel = 'Mất cắp';
+    else if (alert.alert_type === 'medical') alertTypeLabel = 'Y tế';
+
+    // Create toast notification
+    const toastHtml = `
+      <div class="toast show mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-${severityColor} text-white">
+          <i class="fas ${severityIcon} me-2"></i>
+          <strong class="me-auto">Cảnh báo khẩn cấp mới!</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+          <div class="mb-2">
+            <span class="badge bg-${severityColor}">${severityText}</span>
+            <span class="badge bg-secondary">${alertTypeLabel}</span>
+          </div>
+          <p class="mb-2">
+            <strong>Mã:</strong> ${alert.alert_code}<br>
+            <strong>Người báo cáo:</strong> ${alert.user_name}<br>
+            <strong>Phương tiện:</strong> ${alert.vehicle_info}<br>
+            <strong>Mô tả:</strong> ${alert.description}
+          </p>
+          <button class="btn btn-sm btn-${severityColor} w-100" onclick="goToAlert('${alert.alert_code}')">
+            <i class="fas fa-eye"></i> Xem chi tiết
+          </button>
+        </div>
+      </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', toastHtml);
+
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      const toasts = container.querySelectorAll('.toast');
+      if (toasts.length > 0) {
+        toasts[0].remove();
+      }
+    }, 10000);
+
+    // Play sound notification (if supported)
+    try {
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj==');
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    } catch (e) {
+      console.log('Audio notification not supported');
+    }
+  }
+
+  function goToAlert(alertCode) {
+    // Scroll to alert in the list
+    const alertElement = document.querySelector(`[data-alert-id]`);
+    if (alertElement) {
+      alertElement.scrollIntoView({ behavior: 'smooth' });
+    }
+    location.reload();
+  }
+
+  function checkNewAlerts() {
+    if (!isAdmin) return;
+
+    fetch('/emergency/api/new-alerts')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.alerts && data.alerts.length > 0) {
+          data.alerts.forEach(alert => {
+            showAlertNotification(alert);
+          });
+        }
+      })
+      .catch(error => console.log('Error checking alerts:', error));
+  }
+
+  // Start polling for new alerts
+  if (isAdmin) {
+    // Check immediately
+    checkNewAlerts();
+    
+    // Then check every 5 seconds
+    pollingInterval = setInterval(checkNewAlerts, 5000);
+  }
+
   function getCurrentLocation() {
     if (navigator.geolocation) {
       const locationInfo = document.getElementById("locationInfo");
@@ -708,5 +837,86 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
         });
     }
   }
+
+  // Filter alerts by status
+  let currentFilter = 'all';
+
+  function filterAlerts(status) {
+    currentFilter = status;
+    const alertItems = document.querySelectorAll('.alert-item');
+    let visibleCount = 0;
+
+    alertItems.forEach((item) => {
+      const itemStatus = item.getAttribute('data-status');
+      
+      if (status === 'all' || itemStatus === status) {
+        item.style.display = '';
+        visibleCount++;
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    // Reset all filter cards first
+    const filterCards = document.querySelectorAll('.alert-filter-card');
+    filterCards.forEach((card) => {
+      card.style.borderWidth = '1px';
+      card.style.borderStyle = 'solid';
+      card.style.borderColor = '#dee2e6';
+      card.style.opacity = '0.7';
+    });
+
+    // Highlight selected filter
+    const statusIndexMap = {
+      'all': 0,
+      'open': 1,
+      'resolved': 2,
+      'closed': 3
+    };
+
+    const selectedIndex = statusIndexMap[status];
+    if (selectedIndex !== undefined && filterCards[selectedIndex]) {
+      const selectedCard = filterCards[selectedIndex];
+      selectedCard.style.borderWidth = '3px';
+      selectedCard.style.borderStyle = 'solid';
+      selectedCard.style.opacity = '1';
+      
+      // Set appropriate border color based on status
+      if (status === 'all') {
+        selectedCard.style.borderColor = '#FFC107';
+      } else if (status === 'open') {
+        selectedCard.style.borderColor = '#DC3545';
+      } else if (status === 'resolved') {
+        selectedCard.style.borderColor = '#28A745';
+      } else if (status === 'closed') {
+        selectedCard.style.borderColor = '#6C757D';
+      }
+    }
+
+    // Show message if no results
+    const noResultsMsg = document.getElementById('noFilterResults');
+    if (visibleCount === 0) {
+      if (!noResultsMsg) {
+        const msg = document.createElement('div');
+        msg.id = 'noFilterResults';
+        msg.className = 'alert alert-info mt-3';
+        msg.innerHTML = '<i class="fas fa-info-circle"></i> Không có cảnh báo nào phù hợp với bộ lọc.';
+        document.querySelector('#alertsList').after(msg);
+      }
+    } else if (noResultsMsg) {
+      noResultsMsg.remove();
+    }
+  }
+
+  // Initialize with default filter styling
+  document.addEventListener('DOMContentLoaded', function() {
+    const firstCard = document.querySelector('.alert-filter-card');
+    if (firstCard) {
+      firstCard.style.borderWidth = '3px';
+      firstCard.style.borderStyle = 'solid';
+      firstCard.style.opacity = '1';
+      firstCard.style.borderColor = '#FFC107';
+    }
+  });
 </script>
 {% endblock %}
