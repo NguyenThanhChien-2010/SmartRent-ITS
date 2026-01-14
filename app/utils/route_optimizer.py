@@ -5,6 +5,7 @@ Tối ưu hóa tuyến đường sử dụng thuật toán A*
 
 import heapq
 import math
+import requests
 from typing import List, Tuple, Dict, Optional
 
 
@@ -44,6 +45,79 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     c = 2 * math.asin(math.sqrt(a))
     
     return R * c
+
+
+def get_route_from_osrm(start_lat: float, start_lng: float, 
+                        end_lat: float, end_lng: float,
+                        waypoints: List[Dict[str, float]] = None) -> Optional[Dict]:
+    """
+    Lấy route thực tế từ OSRM API (theo đường phố thật)
+    
+    Args:
+        start_lat, start_lng: Tọa độ điểm bắt đầu
+        end_lat, end_lng: Tọa độ điểm kết thúc
+        waypoints: Các điểm trung gian (optional)
+    
+    Returns:
+        Dict với route coordinates và thông tin, hoặc None nếu fail
+    """
+    try:
+        # Build coordinates string: lng,lat;lng,lat format
+        coords = f"{start_lng},{start_lat}"
+        
+        if waypoints:
+            for wp in waypoints:
+                coords += f";{wp['lng']},{wp['lat']}"
+        
+        coords += f";{end_lng},{end_lat}"
+        
+        # OSRM API endpoint (public demo server)
+        url = f"http://router.project-osrm.org/route/v1/driving/{coords}"
+        params = {
+            'overview': 'full',
+            'geometries': 'geojson',
+            'steps': 'false'
+        }
+        
+        response = requests.get(url, params=params, timeout=5)
+        
+        if response.status_code != 200:
+            print(f"[OSRM] API returned {response.status_code}")
+            return None
+        
+        data = response.json()
+        
+        if data['code'] != 'Ok' or not data.get('routes'):
+            print(f"[OSRM] No routes found")
+            return None
+        
+        route = data['routes'][0]
+        
+        # Convert GeoJSON coordinates [lng, lat] to [lat, lng]
+        coordinates = route['geometry']['coordinates']
+        path = [{'lat': coord[1], 'lng': coord[0]} for coord in coordinates]
+        
+        # Distance in meters → km
+        distance_km = route['distance'] / 1000
+        
+        # Duration in seconds → minutes
+        duration_minutes = route['duration'] / 60
+        
+        print(f"[OSRM] ✅ Route found: {distance_km:.2f} km, {duration_minutes:.1f} minutes")
+        
+        return {
+            'path': path,
+            'distance_km': round(distance_km, 2),
+            'duration_minutes': round(duration_minutes, 1),
+            'source': 'osrm'
+        }
+        
+    except requests.Timeout:
+        print("[OSRM] ⚠️ Timeout - using fallback")
+        return None
+    except Exception as e:
+        print(f"[OSRM] ❌ Error: {e}")
+        return None
 
 
 def heuristic(node: Node, goal: Node) -> float:
@@ -145,6 +219,33 @@ def optimize_route(start_lat: float, start_lng: float,
     Returns:
         Dict chứa thông tin route optimized
     """
+    
+    # TRY 1: Use OSRM for realistic routing (theo đường phố thật)
+    osrm_route = get_route_from_osrm(start_lat, start_lng, end_lat, end_lng, waypoints)
+    
+    if osrm_route:
+        # Success! Use OSRM route
+        path = osrm_route['path']
+        total_distance = osrm_route['distance_km']
+        duration_minutes = osrm_route['duration_minutes']
+        
+        # Ước lượng chi phí (500 VND/phút cho bike)
+        estimated_cost = duration_minutes * 500
+        
+        return {
+            'success': True,
+            'path': path,
+            'distance_km': total_distance,
+            'estimated_time_minutes': duration_minutes,
+            'estimated_cost_vnd': int(estimated_cost),
+            'waypoints_count': len(waypoints) if waypoints else 0,
+            'algorithm': 'OSRM (Real Roads)',
+            'avg_speed_kmh': round((total_distance / duration_minutes) * 60, 1) if duration_minutes > 0 else 30
+        }
+    
+    # FALLBACK: Use grid-based A* (demo mode)
+    print("[Route] Using fallback grid-based routing")
+    
     # Tạo grid nodes cho TP.HCM (demo)
     nodes = []
     

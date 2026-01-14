@@ -567,6 +567,39 @@ def plan_trip():
     return render_template('trips/plan.html')
 
 
+@trip_bp.route('/api/optimize-route', methods=['POST'])
+@login_required
+def optimize_route_api():
+    """
+    API: Tính toán route tối ưu với OSRM (POST method)
+    Frontend gọi API này để lấy route theo đường phố thực tế
+    """
+    try:
+        data = request.get_json()
+        start_lat = data.get('start_lat')
+        start_lng = data.get('start_lng')
+        end_lat = data.get('end_lat')
+        end_lng = data.get('end_lng')
+        
+        if not all([start_lat, start_lng, end_lat, end_lng]):
+            return jsonify({'error': 'Missing required coordinates'}), 400
+        
+        print(f"[OptimizeRoute] Request: ({start_lat}, {start_lng}) -> ({end_lat}, {end_lng})")
+        
+        # Call optimize_route function (uses OSRM)
+        route_data = optimize_route(start_lat, start_lng, end_lat, end_lng)
+        
+        print(f"[OptimizeRoute] Result: {route_data['distance_km']} km, {route_data['estimated_time_minutes']} min")
+        
+        return jsonify(route_data)
+        
+    except Exception as e:
+        print(f"[Error] Optimize route API: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @trip_bp.route('/api/route')
 @login_required
 def get_route():

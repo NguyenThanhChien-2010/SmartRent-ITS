@@ -177,38 +177,111 @@
         const endLocation = document.getElementById('endLocation').value;
         const vehicleType = document.getElementById('vehicleType').value;
         
+        if (!startLocation || !endLocation) {
+            alert('Vui lòng nhập đầy đủ điểm xuất phát và điểm đến');
+            return;
+        }
+        
         // Show loading
         document.getElementById('routeResults').classList.remove('d-none');
-        document.getElementById('routeDistance').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-        document.getElementById('routeDuration').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        document.getElementById('routeDistance').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang tính...';
+        document.getElementById('routeDuration').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang tính...';
         
-        // For demo: use mock data with actual TP.HCM coordinates
-        setTimeout(function() {
-            // Demo route from District 1 to District 3 (may pass through hazard zones)
-            const demoRoute = {
-                distance_km: 5.2,
-                duration_minutes: 15,
-                route_points: [
-                    [10.762622, 106.660172],  // Start: District 1
-                    [10.768622, 106.665172],  // Middle point 1
-                    [10.774622, 106.670172],  // Middle point 2 (near Nguyen Hue - hazard zone)
-                    [10.780622, 106.675172],  // Middle point 3
-                    [10.786622, 106.680172]   // End: District 3
-                ],
-                warnings: [
-                    {type: 'traffic', message: 'Tắc đường nhẹ trên đường Nguyễn Huệ'},
-                    {type: 'restricted', message: 'Đường Lê Lợi đang cấm xe từ 7-9h sáng'}
-                ]
+        // Geocode addresses and get route
+        geocodeAndPlanRoute(startLocation, endLocation, vehicleType);
+    });
+    
+    async function geocodeAndPlanRoute(startAddr, endAddr, vehicleType) {
+        try {
+            console.log('🔍 Geocoding addresses...');
+            
+            // Geocode start address
+            const startCoords = await geocodeAddress(startAddr);
+            if (!startCoords) {
+                alert('Không tìm thấy địa chỉ xuất phát: ' + startAddr);
+                return;
+            }
+            
+            // Geocode end address
+            const endCoords = await geocodeAddress(endAddr);
+            if (!endCoords) {
+                alert('Không tìm thấy địa chỉ đến: ' + endAddr);
+                return;
+            }
+            
+            console.log(`📍 Start: ${startCoords.lat}, ${startCoords.lng}`);
+            console.log(`📍 End: ${endCoords.lat}, ${endCoords.lng}`);
+            
+            // Call backend API to get optimized route
+            const response = await fetch('/trips/api/optimize-route', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    start_lat: startCoords.lat,
+                    start_lng: startCoords.lng,
+                    end_lat: endCoords.lat,
+                    end_lng: endCoords.lng
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('API error: ' + response.status);
+            }
+            
+            const routeData = await response.json();
+            console.log('✅ Route data:', routeData);
+            
+            // Convert path to route_points format
+            const route = {
+                distance_km: routeData.distance_km,
+                duration_minutes: routeData.estimated_time_minutes,
+                route_points: routeData.path.map(p => [p.lat, p.lng]),
+                warnings: []
             };
             
-            currentRoutePoints = demoRoute.route_points;
-            displayRoute(demoRoute);
+            currentRoutePoints = route.route_points;
+            displayRoute(route);
             showNearbyVehicles(vehicleType);
             
             // Check for hazards
-            checkRouteHazards(demoRoute.route_points);
-        }, 1000);
-    });
+            checkRouteHazards(route.route_points);
+            
+        } catch (error) {
+            console.error('❌ Error planning route:', error);
+            alert('Lỗi khi tính toán lộ trình. Vui lòng thử lại.');
+            document.getElementById('routeDistance').textContent = '--';
+            document.getElementById('routeDuration').textContent = '--';
+        }
+    }
+    
+    async function geocodeAddress(address) {
+        try {
+            // Use Nominatim API for geocoding (free)
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'SmartRent-ITS/1.0'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.length === 0) {
+                return null;
+            }
+            
+            return {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon)
+            };
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            return null;
+        }
+    }
     
     function displayRoute(route) {
         document.getElementById('routeDistance').textContent = route.distance_km + ' km';
@@ -255,9 +328,33 @@
             opacity: 0.7
         }).addTo(map);
         
-        // Add markers
-        L.marker(routePoints[0]).addTo(map).bindPopup('Điểm xuất phát');
-        L.marker(routePoints[routePoints.length - 1]).addTo(map).bindPopup('Điểm đến');
+        // Clear old markers
+        if (window.startMarker) map.removeLayer(window.startMarker);
+        if (window.endMarker) map.removeLayer(window.endMarker);
+        
+        // Create custom icons
+        const startIcon = L.divIcon({
+            html: '<div style="background-color: #28a745; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><i class="fas fa-play" style="color: white; font-size: 12px; margin-left: 2px;"></i></div>',
+            className: 'custom-start-marker',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+        
+        const endIcon = L.divIcon({
+            html: '<div style="background-color: #dc3545; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><i class="fas fa-flag-checkered" style="color: white; font-size: 12px;"></i></div>',
+            className: 'custom-end-marker',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+        
+        // Add markers with custom icons
+        window.startMarker = L.marker(routePoints[0], {icon: startIcon})
+            .addTo(map)
+            .bindPopup('<strong style="color: #28a745;">🚀 Điểm xuất phát</strong>');
+            
+        window.endMarker = L.marker(routePoints[routePoints.length - 1], {icon: endIcon})
+            .addTo(map)
+            .bindPopup('<strong style="color: #dc3545;">🏁 Điểm đến</strong>');
         
         map.fitBounds(routePoints, {padding: [50, 50]});
     }
