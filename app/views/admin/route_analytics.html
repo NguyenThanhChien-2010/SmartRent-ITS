@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}Route Analytics - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .stats-card h3 {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    
+    .stats-card .value {
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .stats-card .change {
+        font-size: 14px;
+        color: #28a745;
+    }
+    
+    .stats-card .change.negative {
+        color: #dc3545;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        height: 400px;
+    }
+    
+    .filter-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .top-routes-table {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .severity-badge {
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .severity-low { background: #d4edda; color: #155724; }
+    .severity-medium { background: #fff3cd; color: #856404; }
+    .severity-high { background: #f8d7da; color: #721c24; }
+    .severity-critical { background: #dc3545; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><i class="fas fa-chart-line"></i> Route Analytics Dashboard</h2>
+            <p class="text-muted">Thống kê và phân tích routes được lập kế hoạch</p>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="filter-card">
+                <form id="filterForm" class="form-inline">
+                    <div class="form-group mr-3">
+                        <label class="mr-2">Khoảng thời gian:</label>
+                        <select class="form-control" id="dateRange">
+                            <option value="7">7 ngày qua</option>
+                            <option value="30" selected>30 ngày qua</option>
+                            <option value="90">90 ngày qua</option>
+                            <option value="all">Tất cả</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="loadAnalytics()">
+                        <i class="fas fa-sync"></i> Cập nhật
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>Tổng Routes</h3>
+                <div class="value" id="totalRoutes">-</div>
+                <div class="change" id="routesChange">-</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>Khoảng cách TB</h3>
+                <div class="value" id="avgDistance">-</div>
+                <div class="text-muted">km / route</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>Thời gian TB</h3>
+                <div class="value" id="avgDuration">-</div>
+                <div class="text-muted">phút / route</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>Routes có Hazard</h3>
+                <div class="value" id="hazardRoutes">-</div>
+                <div class="change" id="hazardPercent">-</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row 1 -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h4>Routes Theo Thời Gian</h4>
+                <canvas id="routesTimeChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h4>Thuật Toán Routing</h4>
+                <canvas id="algorithmChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row 2 -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h4>Top 10 Điểm Xuất Phát</h4>
+                <canvas id="topStartChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h4>Top 10 Điểm Đến</h4>
+                <canvas id="topEndChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Routes Table -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="top-routes-table">
+                <h4><i class="fas fa-route"></i> Top 20 Routes Phổ Biến</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="topRoutesTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Từ</th>
+                                <th>Đến</th>
+                                <th>Số lần</th>
+                                <th>Khoảng cách TB</th>
+                                <th>Thời gian TB</th>
+                                <th>Hazards</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topRoutesBody">
+                            <tr>
+                                <td colspan="7" class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hazard Impact Section -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="top-routes-table">
+                <h4><i class="fas fa-exclamation-triangle"></i> Hazard Zone Impact</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Hazard Zone</th>
+                                <th>Severity</th>
+                                <th>Routes Affected</th>
+                                <th>% of Total</th>
+                                <th>Avg Routes/Day</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hazardImpactBody">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<script>
+let routesTimeChart, algorithmChart, topStartChart, topEndChart;
+
+// Load analytics on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadAnalytics();
+});
+
+async function loadAnalytics() {
+    const dateRange = document.getElementById('dateRange').value;
+    
+    try {
+        // Fetch analytics data
+        const response = await fetch(`/admin/api/route-analytics?days=${dateRange}`);
+        if (!response.ok) throw new Error('Failed to fetch analytics');
+        
+        const data = await response.json();
+        
+        // Update stats cards
+        updateStatsCards(data.stats);
+        
+        // Update charts
+        updateRoutesTimeChart(data.routes_over_time);
+        updateAlgorithmChart(data.algorithm_usage);
+        updateTopStartChart(data.top_start_locations);
+        updateTopEndChart(data.top_end_locations);
+        
+        // Update tables
+        updateTopRoutesTable(data.top_routes);
+        updateHazardImpactTable(data.hazard_impact);
+        
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+        alert('Lỗi tải dữ liệu analytics');
+    }
+}
+
+function updateStatsCards(stats) {
+    document.getElementById('totalRoutes').textContent = stats.total_routes.toLocaleString();
+    document.getElementById('routesChange').textContent = `${stats.routes_change > 0 ? '+' : ''}${stats.routes_change}% vs tuần trước`;
+    document.getElementById('routesChange').className = stats.routes_change >= 0 ? 'change' : 'change negative';
+    
+    document.getElementById('avgDistance').textContent = stats.avg_distance.toFixed(2);
+    document.getElementById('avgDuration').textContent = stats.avg_duration.toFixed(0);
+    
+    document.getElementById('hazardRoutes').textContent = stats.hazard_routes.toLocaleString();
+    document.getElementById('hazardPercent').textContent = `${stats.hazard_percent.toFixed(1)}% of total`;
+}
+
+function updateRoutesTimeChart(data) {
+    const ctx = document.getElementById('routesTimeChart').getContext('2d');
+    
+    if (routesTimeChart) {
+        routesTimeChart.destroy();
+    }
+    
+    routesTimeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Routes',
+                data: data.values,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+function updateAlgorithmChart(data) {
+    const ctx = document.getElementById('algorithmChart').getContext('2d');
+    
+    if (algorithmChart) {
+        algorithmChart.destroy();
+    }
+    
+    algorithmChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.values,
+                backgroundColor: ['#28a745', '#17a2b8', '#ffc107']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+function updateTopStartChart(data) {
+    const ctx = document.getElementById('topStartChart').getContext('2d');
+    
+    if (topStartChart) {
+        topStartChart.destroy();
+    }
+    
+    topStartChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Số lần',
+                data: data.values,
+                backgroundColor: '#28a745'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+function updateTopEndChart(data) {
+    const ctx = document.getElementById('topEndChart').getContext('2d');
+    
+    if (topEndChart) {
+        topEndChart.destroy();
+    }
+    
+    topEndChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Số lần',
+                data: data.values,
+                backgroundColor: '#dc3545'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+function updateTopRoutesTable(routes) {
+    const tbody = document.getElementById('topRoutesBody');
+    
+    if (routes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Chưa có dữ liệu</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = routes.map((route, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td>${route.start_address || 'N/A'}</td>
+            <td>${route.end_address || 'N/A'}</td>
+            <td><strong>${route.count}</strong></td>
+            <td>${route.avg_distance.toFixed(2)} km</td>
+            <td>${route.avg_duration.toFixed(0)} phút</td>
+            <td>${route.hazard_count > 0 ? `<span class="badge badge-warning">${route.hazard_count}</span>` : '-'}</td>
+        </tr>
+    `).join('');
+}
+
+function updateHazardImpactTable(hazards) {
+    const tbody = document.getElementById('hazardImpactBody');
+    
+    if (hazards.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Không có hazard zones hoặc chưa có routes affected</td></tr>';
+        return;
+    }
+    
+    const severityClass = {
+        'low': 'severity-low',
+        'medium': 'severity-medium',
+        'high': 'severity-high',
+        'critical': 'severity-critical'
+    };
+    
+    tbody.innerHTML = hazards.map(hazard => `
+        <tr>
+            <td>${hazard.zone_name}</td>
+            <td><span class="severity-badge ${severityClass[hazard.severity]}">${hazard.severity.toUpperCase()}</span></td>
+            <td><strong>${hazard.routes_affected}</strong></td>
+            <td>${hazard.percent_of_total.toFixed(1)}%</td>
+            <td>${hazard.avg_per_day.toFixed(1)}</td>
+        </tr>
+    `).join('');
+}
+</script>
+{% endblock %}

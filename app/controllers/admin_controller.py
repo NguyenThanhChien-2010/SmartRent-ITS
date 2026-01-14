@@ -892,3 +892,237 @@ def toggle_hazard_zone(zone_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+# ============= ROUTE ANALYTICS (TIER 1) =============
+
+@admin_bp.route('/route-analytics')
+@login_required
+@admin_required
+def route_analytics():
+    """Trang analytics cho routes đã plan"""
+    return render_template('admin/route_analytics.html')
+
+
+@admin_bp.route('/api/route-analytics', methods=['GET'])
+@login_required
+@admin_required
+def get_route_analytics():
+    """
+    API: Lấy dữ liệu analytics cho routes
+    Query params: days (7, 30, 90, all)
+    """
+    try:
+        from app.models import RouteHistory
+        
+        days = request.args.get('days', '30')
+        
+        # Calculate date filter
+        if days == 'all':
+            date_filter = None
+        else:
+            days_int = int(days)
+            cutoff_date = datetime.utcnow() - timedelta(days=days_int)
+            date_filter = RouteHistory.created_at >= cutoff_date
+        
+        # Base query
+        if date_filter is not None:
+            routes_query = RouteHistory.query.filter(date_filter)
+            all_routes = RouteHistory.query.all()
+        else:
+            routes_query = RouteHistory.query
+            all_routes = routes_query.all()
+        
+        total_routes = routes_query.count()
+        
+        # ===== STATS CARDS =====
+        
+        # Calculate previous period for comparison
+        if days != 'all':
+            prev_cutoff = cutoff_date - timedelta(days=days_int)
+            prev_routes = RouteHistory.query.filter(
+                RouteHistory.created_at >= prev_cutoff,
+                RouteHistory.created_at < cutoff_date
+            ).count()
+            
+            routes_change = ((total_routes - prev_routes) / prev_routes * 100) if prev_routes > 0 else 0
+        else:
+            routes_change = 0
+        
+        # Average metrics
+        avg_distance = db.session.query(func.avg(RouteHistory.distance_km))\
+            .filter(date_filter if date_filter is not None else True).scalar() or 0
+        
+        avg_duration = db.session.query(func.avg(RouteHistory.duration_minutes))\
+            .filter(date_filter if date_filter is not None else True).scalar() or 0
+        
+        # Hazard routes
+        hazard_routes = routes_query.filter(RouteHistory.hazards_detected > 0).count()
+        hazard_percent = (hazard_routes / total_routes * 100) if total_routes > 0 else 0
+        
+        stats = {
+            'total_routes': total_routes,
+            'routes_change': round(routes_change, 1),
+            'avg_distance': float(avg_distance),
+            'avg_duration': float(avg_duration),
+            'hazard_routes': hazard_routes,
+            'hazard_percent': hazard_percent
+        }
+        
+        # ===== ROUTES OVER TIME =====
+        
+        routes_over_time = db.session.query(
+            func.date(RouteHistory.created_at).label('date'),
+            func.count(RouteHistory.id).label('count')
+        ).filter(date_filter if date_filter is not None else True)\
+         .group_by(func.date(RouteHistory.created_at))\
+         .order_by(func.date(RouteHistory.created_at))\
+         .all()
+        
+        # Format dates (handle both date objects and strings from PostgreSQL)
+        labels = []
+        for r in routes_over_time:
+            if isinstance(r.date, str):
+                # PostgreSQL returns string, parse it
+                from datetime import datetime as dt
+                date_obj = dt.strptime(r.date, '%Y-%m-%d').date()
+                labels.append(date_obj.strftime('%d/%m'))
+            else:
+                # Already a date object
+                labels.append(r.date.strftime('%d/%m'))
+        
+        routes_time_data = {
+            'labels': labels,
+            'values': [r.count for r in routes_over_time]
+        }
+        
+        # ===== ALGORITHM USAGE =====
+        
+        algorithm_usage = db.session.query(
+            RouteHistory.routing_algorithm,
+            func.count(RouteHistory.id).label('count')
+        ).filter(date_filter if date_filter is not None else True)\
+         .group_by(RouteHistory.routing_algorithm)\
+         .all()
+        
+        algorithm_data = {
+            'labels': [r.routing_algorithm or 'Unknown' for r in algorithm_usage],
+            'values': [r.count for r in algorithm_usage]
+        }
+        
+        # ===== TOP START LOCATIONS =====
+        
+        top_start = db.session.query(
+            RouteHistory.start_address,
+            func.count(RouteHistory.id).label('count')
+        ).filter(date_filter if date_filter is not None else True)\
+         .filter(RouteHistory.start_address.isnot(None))\
+         .group_by(RouteHistory.start_address)\
+         .order_by(func.count(RouteHistory.id).desc())\
+         .limit(10)\
+         .all()
+        
+        top_start_data = {
+            'labels': [r.start_address[:30] + '...' if len(r.start_address) > 30 else r.start_address for r in top_start],
+            'values': [r.count for r in top_start]
+        }
+        
+        # ===== TOP END LOCATIONS =====
+        
+        top_end = db.session.query(
+            RouteHistory.end_address,
+            func.count(RouteHistory.id).label('count')
+        ).filter(date_filter if date_filter is not None else True)\
+         .filter(RouteHistory.end_address.isnot(None))\
+         .group_by(RouteHistory.end_address)\
+         .order_by(func.count(RouteHistory.id).desc())\
+         .limit(10)\
+         .all()
+        
+        top_end_data = {
+            'labels': [r.end_address[:30] + '...' if len(r.end_address) > 30 else r.end_address for r in top_end],
+            'values': [r.count for r in top_end]
+        }
+        
+        # ===== TOP ROUTES =====
+        
+        top_routes_query = db.session.query(
+            RouteHistory.start_address,
+            RouteHistory.end_address,
+            func.count(RouteHistory.id).label('count'),
+            func.avg(RouteHistory.distance_km).label('avg_distance'),
+            func.avg(RouteHistory.duration_minutes).label('avg_duration'),
+            func.sum(RouteHistory.hazards_detected).label('hazard_count')
+        ).filter(date_filter if date_filter is not None else True)\
+         .filter(RouteHistory.start_address.isnot(None))\
+         .filter(RouteHistory.end_address.isnot(None))\
+         .group_by(RouteHistory.start_address, RouteHistory.end_address)\
+         .order_by(func.count(RouteHistory.id).desc())\
+         .limit(20)\
+         .all()
+        
+        top_routes = []
+        for r in top_routes_query:
+            top_routes.append({
+                'start_address': r.start_address,
+                'end_address': r.end_address,
+                'count': r.count,
+                'avg_distance': float(r.avg_distance or 0),
+                'avg_duration': float(r.avg_duration or 0),
+                'hazard_count': int(r.hazard_count or 0)
+            })
+        
+        # ===== HAZARD IMPACT =====
+        
+        # Get all active hazard zones
+        hazard_zones = HazardZone.query.filter_by(is_active=True).all()
+        
+        hazard_impact = []
+        for zone in hazard_zones:
+            # Count routes affected by this zone
+            # (Check if zone_id in hazard_zones_passed JSON array)
+            affected_routes = routes_query.filter(
+                RouteHistory.hazard_zones_passed.contains([zone.id])
+            ).count()
+            
+            if affected_routes > 0:
+                percent = (affected_routes / total_routes * 100) if total_routes > 0 else 0
+                
+                # Calculate avg per day
+                if days != 'all':
+                    avg_per_day = affected_routes / int(days)
+                else:
+                    # Use total days from first route to now
+                    first_route = RouteHistory.query.order_by(RouteHistory.created_at).first()
+                    if first_route:
+                        total_days = (datetime.utcnow() - first_route.created_at).days or 1
+                        avg_per_day = affected_routes / total_days
+                    else:
+                        avg_per_day = 0
+                
+                hazard_impact.append({
+                    'zone_name': zone.zone_name,
+                    'severity': zone.severity,  # Fixed: was severity_level
+                    'routes_affected': affected_routes,
+                    'percent_of_total': percent,
+                    'avg_per_day': avg_per_day
+                })
+        
+        # Sort by routes affected
+        hazard_impact.sort(key=lambda x: x['routes_affected'], reverse=True)
+        
+        # Return all data
+        return jsonify({
+            'stats': stats,
+            'routes_over_time': routes_time_data,
+            'algorithm_usage': algorithm_data,
+            'top_start_locations': top_start_data,
+            'top_end_locations': top_end_data,
+            'top_routes': top_routes,
+            'hazard_impact': hazard_impact
+        })
+        
+    except Exception as e:
+        print(f"[Error] Route analytics API: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

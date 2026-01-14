@@ -425,3 +425,46 @@ class HazardZone(db.Model):
     
     def __repr__(self):
         return f'<HazardZone {self.zone_code}: {self.zone_name}>'
+
+
+class RouteHistory(db.Model):
+    """
+    Model lưu lịch sử routes đã plan (for Analytics)
+    Không conflict với Trip model (Trip = actual rental, RouteHistory = planning only)
+    """
+    __tablename__ = 'route_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # User info
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Route info
+    start_address = db.Column(db.String(500))
+    end_address = db.Column(db.String(500))
+    start_lat = db.Column(db.Float, nullable=False)
+    start_lng = db.Column(db.Float, nullable=False)
+    end_lat = db.Column(db.Float, nullable=False)
+    end_lng = db.Column(db.Float, nullable=False)
+    
+    # Route metrics
+    distance_km = db.Column(db.Float)
+    duration_minutes = db.Column(db.Float)
+    estimated_cost = db.Column(db.Integer)
+    
+    # Hazard info
+    hazards_detected = db.Column(db.Integer, default=0)
+    hazard_zones_passed = db.Column(db.JSON)  # List of zone IDs
+    alternative_route_chosen = db.Column(db.Boolean, default=False)
+    
+    # Algorithm used
+    routing_algorithm = db.Column(db.String(50))  # 'OSRM', 'A*', etc.
+    
+    # Timestamp
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationship
+    user = db.relationship('User', backref='route_plans')
+    
+    def __repr__(self):
+        return f'<RouteHistory {self.id}: {self.start_address} -> {self.end_address}>'

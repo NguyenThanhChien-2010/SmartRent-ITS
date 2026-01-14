@@ -580,6 +580,8 @@ def optimize_route_api():
         start_lng = data.get('start_lng')
         end_lat = data.get('end_lat')
         end_lng = data.get('end_lng')
+        start_address = data.get('start_address', '')
+        end_address = data.get('end_address', '')
         
         if not all([start_lat, start_lng, end_lat, end_lng]):
             return jsonify({'error': 'Missing required coordinates'}), 400
@@ -590,6 +592,35 @@ def optimize_route_api():
         route_data = optimize_route(start_lat, start_lng, end_lat, end_lng)
         
         print(f"[OptimizeRoute] Result: {route_data['distance_km']} km, {route_data['estimated_time_minutes']} min")
+        
+        # SAFE LOGGING for Analytics (non-intrusive - wrapped in try/except)
+        try:
+            from app.models import RouteHistory
+            
+            # Create route history record
+            route_history = RouteHistory(
+                user_id=current_user.id,
+                start_address=start_address,
+                end_address=end_address,
+                start_lat=start_lat,
+                start_lng=start_lng,
+                end_lat=end_lat,
+                end_lng=end_lng,
+                distance_km=route_data.get('distance_km'),
+                duration_minutes=route_data.get('estimated_time_minutes'),
+                estimated_cost=route_data.get('estimated_cost'),
+                hazards_detected=0,  # Will be updated if route check happens
+                routing_algorithm='OSRM' if route_data.get('algorithm') == 'osrm' else 'A*'
+            )
+            db.session.add(route_history)
+            db.session.commit()
+            
+            print(f"[Analytics] Route logged: ID={route_history.id}")
+            
+        except Exception as log_error:
+            # SAFE: Don't break main functionality if logging fails
+            print(f"[Warning] Analytics logging failed: {log_error}")
+            db.session.rollback()
         
         return jsonify(route_data)
         
