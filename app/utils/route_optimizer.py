@@ -259,3 +259,162 @@ def predict_traffic(hour: int, day_of_week: int) -> str:
         return 'normal'
     
     return 'normal'
+
+
+def calculate_alternative_routes(start_lat: float, start_lng: float,
+                                 end_lat: float, end_lng: float,
+                                 hazard_zones: List = None,
+                                 num_alternatives: int = 3) -> List[Dict]:
+    """
+    Tính toán nhiều routes thay thế, tránh hazard zones
+    
+    Args:
+        start_lat, start_lng: Tọa độ điểm bắt đầu
+        end_lat, end_lng: Tọa độ điểm kết thúc
+        hazard_zones: List các HazardZone objects cần tránh
+        num_alternatives: Số lượng routes thay thế cần tính
+    
+    Returns:
+        List[Dict]: Danh sách routes với risk level và metrics
+    """
+    from app.utils.hazard_checker import check_route_hazards, point_in_polygon
+    
+    routes = []
+    
+    # Convert HazardZone objects to dicts for hazard_checker
+    zones_data = []
+    if hazard_zones:
+        for zone in hazard_zones:
+            zones_data.append({
+                'id': zone.id,
+                'zone_code': zone.zone_code,
+                'zone_name': zone.zone_name,
+                'hazard_type': zone.hazard_type,
+                'severity': zone.severity,
+                'description': zone.description,
+                'warning_message': zone.warning_message,
+                'polygon_coordinates': zone.polygon_coordinates,
+                'min_latitude': zone.min_latitude,
+                'max_latitude': zone.max_latitude,
+                'min_longitude': zone.min_longitude,
+                'max_longitude': zone.max_longitude,
+                'color': zone.color,
+                'is_active': zone.is_active
+            })
+    
+    # Route 1: Đường thẳng (baseline - có thể đi qua hazard)
+    direct_route = optimize_route(start_lat, start_lng, end_lat, end_lng)
+    direct_route['route_type'] = 'direct'
+    direct_route['route_name'] = 'Đường ngắn nhất'
+    
+    # Check hazards cho direct route
+    if zones_data:
+        route_points = [(p['lat'], p['lng']) for p in direct_route['path']]
+        hazards_detected = check_route_hazards(route_points, zones_data)
+        direct_route['hazards'] = hazards_detected
+        direct_route['hazard_count'] = len(hazards_detected)
+        direct_route['risk_level'] = _calculate_risk_level(hazards_detected)
+    else:
+        direct_route['hazards'] = []
+        direct_route['hazard_count'] = 0
+        direct_route['risk_level'] = 'safe'
+    
+    routes.append(direct_route)
+    
+    # Route 2 & 3: Alternative routes tránh hazard zones
+    if zones_data and direct_route['hazard_count'] > 0:
+        # Tạo waypoints để đi vòng tránh hazard zones
+        for i in range(num_alternatives - 1):
+            offset = 0.01 * (i + 1)  # Tăng độ lệch cho mỗi alternative
+            
+            # Tính waypoint ở bên phải hoặc trái của direct line
+            mid_lat = (start_lat + end_lat) / 2
+            mid_lng = (start_lng + end_lng) / 2
+            
+            # Perpendicular offset (đi vuông góc với đường thẳng)
+            if i % 2 == 0:
+                # Route đi bên phải
+                waypoint_lat = mid_lat + offset
+                waypoint_lng = mid_lng - offset
+                route_name = f'Đường tránh {i+1} (bên phải)'
+            else:
+                # Route đi bên trái
+                waypoint_lat = mid_lat - offset
+                waypoint_lng = mid_lng + offset
+                route_name = f'Đường tránh {i+1} (bên trái)'
+            
+            # Kiểm tra waypoint không nằm trong hazard zone
+            waypoint_safe = True
+            for zone in zones_data:
+                if zone.get('is_active', True) and point_in_polygon((waypoint_lat, waypoint_lng), zone['polygon_coordinates']):
+                    waypoint_safe = False
+                    break
+            
+            if not waypoint_safe:
+                # Tăng offset nếu waypoint vẫn trong hazard
+                waypoint_lat += offset * 1.5
+                waypoint_lng += offset * 1.5
+            
+            # Tính route qua waypoint
+            alt_route = optimize_route(
+                start_lat, start_lng, end_lat, end_lng,
+                waypoints=[{'lat': waypoint_lat, 'lng': waypoint_lng}]
+            )
+            alt_route['route_type'] = 'alternative'
+            alt_route['route_name'] = route_name
+            
+            # Check hazards cho alternative route
+            route_points = [(p['lat'], p['lng']) for p in alt_route['path']]
+            hazards_detected = check_route_hazards(route_points, zones_data)
+            alt_route['hazards'] = hazards_detected
+            alt_route['hazard_count'] = len(hazards_detected)
+            alt_route['risk_level'] = _calculate_risk_level(hazards_detected)
+            
+            routes.append(alt_route)
+    
+    # Sort routes by risk level then distance
+    routes.sort(key=lambda r: (
+        _risk_score(r['risk_level']),
+        r['distance_km']
+    ))
+    
+    # Add route rankings
+    for idx, route in enumerate(routes):
+        route['rank'] = idx + 1
+        route['recommended'] = (idx == 0)  # Route đầu tiên là recommended
+    
+    return routes
+
+
+def _calculate_risk_level(hazards: List[Dict]) -> str:
+    """
+    Tính risk level dựa trên hazards detected
+    """
+    if not hazards:
+        return 'safe'
+    
+    severity_scores = {'low': 1, 'medium': 2, 'high': 3, 'critical': 4}
+    max_severity = max([severity_scores.get(h.get('severity', 'medium'), 2) for h in hazards])
+    
+    if max_severity >= 4:
+        return 'critical'
+    elif max_severity >= 3:
+        return 'high'
+    elif max_severity >= 2:
+        return 'medium'
+    else:
+        return 'low'
+
+
+def _risk_score(risk_level: str) -> int:
+    """
+    Convert risk level to numeric score for sorting
+    """
+    risk_scores = {
+        'safe': 0,
+        'low': 1,
+        'medium': 2,
+        'high': 3,
+        'critical': 4
+    }
+    return risk_scores.get(risk_level, 2)

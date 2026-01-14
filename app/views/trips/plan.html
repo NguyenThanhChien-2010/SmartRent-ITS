@@ -296,6 +296,12 @@
     // ==========================================
     
     function loadHazardZones() {
+        // NOTE: Users don't have access to admin API
+        // Hazard zones will be checked on backend when user plans route
+        // No need to display zones on map for regular users
+        console.log('ℹ️ Hazard zones will be checked when you plan a route');
+        
+        /* DISABLED - Admin API access required
         fetch('/admin/api/hazard-zones')
             .then(response => response.json())
             .then(data => {
@@ -306,6 +312,7 @@
                 }
             })
             .catch(error => console.error('Error loading hazard zones:', error));
+        */
     }
     
     function displayHazardZonesOnMap(zones) {
@@ -329,8 +336,18 @@
         });
     }
     
+    let currentStartPoint = null;
+    let currentEndPoint = null;
+    let alternativeRoutesData = null;
+    
     function checkRouteHazards(routePoints) {
         console.log('🔍 Checking route for hazards...');
+        
+        // Store start/end for alternative routes
+        if (routePoints.length >= 2) {
+            currentStartPoint = routePoints[0];
+            currentEndPoint = routePoints[routePoints.length - 1];
+        }
         
         fetch('/trips/api/check-route-hazards', {
             method: 'POST',
@@ -347,6 +364,8 @@
             
             if (data.success && data.has_hazards) {
                 showHazardWarning(data.hazards);
+                // Auto-fetch alternative routes
+                fetchAlternativeRoutes();
             } else {
                 console.log('✅ No hazards detected on route');
             }
@@ -391,8 +410,179 @@
             `;
         });
         
+        // Add alternative routes button
+        hazardsList.innerHTML += `
+            <div class="mt-3 p-3 bg-light rounded" id="alternativeRoutesSection">
+                <div class="text-center">
+                    <i class="fas fa-spinner fa-spin"></i> Đang tính toán đường thay thế...
+                </div>
+            </div>
+        `;
+        
         // Show modal
         document.getElementById('hazardModal').classList.add('show');
+    }
+    
+    function closeHazardModal() {
+        document.getElementById('hazardModal').classList.remove('show');
+    }
+    
+    function fetchAlternativeRoutes() {
+        if (!currentStartPoint || !currentEndPoint) {
+            console.error('Missing start/end points');
+            return;
+        }
+        
+        console.log('🔄 Fetching alternative routes...');
+        
+        fetch('/trips/api/alternative-routes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                start_lat: currentStartPoint[0],
+                start_lng: currentStartPoint[1],
+                end_lat: currentEndPoint[0],
+                end_lng: currentEndPoint[1]
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('📥 Alternative routes:', data);
+            
+            if (data.success) {
+                alternativeRoutesData = data.routes;
+                displayAlternativeRoutes(data.routes, data.has_safe_alternative);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error fetching alternative routes:', error);
+            document.getElementById('alternativeRoutesSection').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Không thể tính đường thay thế
+                </div>
+            `;
+        });
+    }
+    
+    function displayAlternativeRoutes(routes, hasSafe) {
+        const section = document.getElementById('alternativeRoutesSection');
+        
+        if (routes.length === 0) {
+            section.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    Không tìm thấy đường thay thế
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <h6 class="mb-3">
+                <i class="fas fa-map"></i> Đường thay thế 
+                ${hasSafe ? '<span class="badge bg-success">Có đường an toàn</span>' : ''}
+            </h6>
+        `;
+        
+        routes.forEach((route, index) => {
+            const riskBadge = getRiskBadge(route.risk_level);
+            const isRecommended = route.recommended;
+            
+            html += `
+                <div class="card mb-2 ${isRecommended ? 'border-success' : ''}">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong>${route.route_name}</strong>
+                                ${isRecommended ? '<span class="badge bg-success ms-2">Đề xuất</span>' : ''}
+                            </div>
+                            ${riskBadge}
+                        </div>
+                        
+                        <div class="row small text-muted">
+                            <div class="col-4">
+                                <i class="fas fa-route"></i> ${route.distance_km} km
+                            </div>
+                            <div class="col-4">
+                                <i class="fas fa-clock"></i> ${route.estimated_time_minutes} phút
+                            </div>
+                            <div class="col-4">
+                                <i class="fas fa-money-bill-wave"></i> ${route.estimated_cost_vnd.toLocaleString()} đ
+                            </div>
+                        </div>
+                        
+                        ${route.hazard_count > 0 ? `
+                            <div class="mt-2">
+                                <small class="text-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    ${route.hazard_count} vùng nguy hiểm
+                                </small>
+                            </div>
+                        ` : `
+                            <div class="mt-2">
+                                <small class="text-success">
+                                    <i class="fas fa-check-circle"></i> 
+                                    An toàn
+                                </small>
+                            </div>
+                        `}
+                        
+                        <button class="btn btn-sm btn-outline-primary mt-2 w-100" 
+                                onclick="selectRoute(${index})">
+                            <i class="fas fa-check"></i> Chọn đường này
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        section.innerHTML = html;
+    }
+    
+    function getRiskBadge(riskLevel) {
+        const badges = {
+            'safe': '<span class="badge bg-success">An toàn</span>',
+            'low': '<span class="badge bg-info">Rủi ro thấp</span>',
+            'medium': '<span class="badge bg-warning">Rủi ro TB</span>',
+            'high': '<span class="badge bg-danger">Rủi ro cao</span>',
+            'critical': '<span class="badge bg-dark">Rất nguy hiểm</span>'
+        };
+        return badges[riskLevel] || badges['medium'];
+    }
+    
+    function selectRoute(routeIndex) {
+        const route = alternativeRoutesData[routeIndex];
+        console.log('✅ Selected route:', route);
+        
+        // Clear existing route layers
+        map.eachLayer(layer => {
+            if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                map.removeLayer(layer);
+            }
+        });
+        
+        // Draw selected route on map
+        const routeCoords = route.path.map(p => [p.lat, p.lng]);
+        const routeLine = L.polyline(routeCoords, {
+            color: route.recommended ? '#28a745' : '#007bff',
+            weight: 5,
+            opacity: 0.8
+        }).addTo(map);
+        
+        // Fit map to route
+        map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+        
+        // Close modal
+        closeHazardModal();
+        
+        // Show success message
+        alert(`✅ Đã chọn: ${route.route_name}\n` +
+              `📍 Khoảng cách: ${route.distance_km} km\n` +
+              `⏱️ Thời gian: ${route.estimated_time_minutes} phút\n` +
+              `💰 Chi phí: ${route.estimated_cost_vnd.toLocaleString()} đ`);
     }
     
     function closeHazardModal() {

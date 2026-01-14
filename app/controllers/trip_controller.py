@@ -746,3 +746,88 @@ def check_route_for_hazards():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+
+@trip_bp.route('/api/alternative-routes', methods=['POST'])
+@login_required
+def get_alternative_routes():
+    """
+    API: Tính toán alternative routes tránh hazard zones
+    ITS Feature: Advanced Route Planning with Hazard Avoidance
+    """
+    try:
+        from app.utils.route_optimizer import calculate_alternative_routes
+        
+        data = request.get_json()
+        start_lat = data.get('start_lat')
+        start_lng = data.get('start_lng')
+        end_lat = data.get('end_lat')
+        end_lng = data.get('end_lng')
+        
+        if not all([start_lat, start_lng, end_lat, end_lng]):
+            return jsonify({'error': 'Missing required coordinates'}), 400
+        
+        print(f"[AlternativeRoutes] Calculating routes from ({start_lat}, {start_lng}) to ({end_lat}, {end_lng})")
+        
+        # Get all active hazard zones
+        active_zones = HazardZone.query.filter_by(is_active=True).all()
+        print(f"[AlternativeRoutes] Found {len(active_zones)} active hazard zones")
+        
+        # Calculate alternative routes
+        routes = calculate_alternative_routes(
+            start_lat, start_lng,
+            end_lat, end_lng,
+            hazard_zones=active_zones,
+            num_alternatives=3
+        )
+        
+        print(f"[AlternativeRoutes] Generated {len(routes)} alternative routes")
+        
+        # Format response
+        routes_data = []
+        for route in routes:
+            route_info = {
+                'rank': route['rank'],
+                'route_name': route['route_name'],
+                'route_type': route['route_type'],
+                'recommended': route['recommended'],
+                'path': route['path'],
+                'distance_km': route['distance_km'],
+                'estimated_time_minutes': route['estimated_time_minutes'],
+                'estimated_cost_vnd': route['estimated_cost_vnd'],
+                'hazard_count': route['hazard_count'],
+                'risk_level': route['risk_level'],
+                'hazards': []
+            }
+            
+            # Add hazard details with icons
+            for hazard in route['hazards']:
+                hazard_info = {
+                    'zone_name': hazard['zone_name'],
+                    'hazard_type': hazard['hazard_type'],
+                    'severity': hazard['severity'],
+                    'warning_message': hazard['warning_message'],
+                    'type_icon': get_hazard_type_icon(hazard['hazard_type']),
+                    'severity_icon': get_severity_icon(hazard['severity'])
+                }
+                route_info['hazards'].append(hazard_info)
+            
+            routes_data.append(route_info)
+        
+        # Find safest route
+        safest_route = min(routes, key=lambda r: r['hazard_count'])
+        
+        return jsonify({
+            'success': True,
+            'routes': routes_data,
+            'total_routes': len(routes_data),
+            'safest_route_index': routes.index(safest_route),
+            'has_safe_alternative': any(r['hazard_count'] == 0 for r in routes)
+        })
+        
+    except Exception as e:
+        print(f"[Error] Calculating alternative routes: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
