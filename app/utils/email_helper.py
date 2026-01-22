@@ -40,7 +40,7 @@ def verify_otp(trip_id, otp):
     if stored_data['otp'] != otp:
         return False, "Mã OTP không chính xác"
     
-    # OTP valid - remove it after use
+    ## OTP valid - remove it after use
     del otp_storage[trip_id]
     return True, "Xác thực thành công"
 
