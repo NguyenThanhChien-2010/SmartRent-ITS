@@ -15,22 +15,36 @@ def list_vehicles():
     vehicle_type = request.args.get('type', 'all')
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    
+    search_query = request.args.get('search', '').strip()
+
     query = Vehicle.query.filter_by(status='available')
-    
+
     if vehicle_type != 'all':
         query = query.filter_by(vehicle_type=vehicle_type)
-    
+
+    # Apply search filter if provided
+    if search_query:
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(
+                Vehicle.brand.ilike(f'%{search_query}%'),
+                Vehicle.model.ilike(f'%{search_query}%'),
+                Vehicle.license_plate.ilike(f'%{search_query}%'),
+                Vehicle.vehicle_code.ilike(f'%{search_query}%')
+            )
+        )
+
     vehicles = query.paginate(page=page, per_page=per_page, error_out=False)
-    
-    return render_template('vehicles/list.html', vehicles=vehicles, vehicle_type=vehicle_type)
+
+    return render_template('vehicles/list.html', vehicles=vehicles, vehicle_type=vehicle_type, search_query=search_query)
 
 
 @vehicle_bp.route('/map')
 @login_required
 def vehicle_map():
     """Hiển thị bản đồ phương tiện (GIS)"""
-    return render_template('vehicles/map.html')
+    search_query = request.args.get('search', '').strip()
+    return render_template('vehicles/map.html', search_query=search_query)
 
 
 @vehicle_bp.route('/api/nearby')
@@ -42,10 +56,11 @@ def nearby_vehicles():
     radius = request.args.get('radius', 5, type=float)  # km
     vehicle_type = request.args.get('type', 'all')
     show_all = request.args.get('show_all', 'false') == 'true'  # Debug mode
-    
+    search_query = request.args.get('search', '').strip()
+
     if not lat or not lng:
         return jsonify({'error': 'Missing location parameters'}), 400
-    
+
     vehicles = []
     # If Firebase enabled, use Firestore
     if current_app.config.get('FIREBASE_ENABLED', False):
@@ -66,6 +81,19 @@ def nearby_vehicles():
             query = Vehicle.query.filter_by(status='available')
         if vehicle_type != 'all':
             query = query.filter_by(vehicle_type=vehicle_type)
+
+        # Apply search filter if provided
+        if search_query:
+            from sqlalchemy import or_
+            query = query.filter(
+                or_(
+                    Vehicle.brand.ilike(f'%{search_query}%'),
+                    Vehicle.model.ilike(f'%{search_query}%'),
+                    Vehicle.license_plate.ilike(f'%{search_query}%'),
+                    Vehicle.vehicle_code.ilike(f'%{search_query}%')
+                )
+            )
+
         vehicles = query.all()
     
     # Filter by distance

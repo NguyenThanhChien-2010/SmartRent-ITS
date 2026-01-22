@@ -192,10 +192,14 @@
 
     const vehicleType = document.getElementById("vehicleTypeFilter").value;
     const radius = document.getElementById("radiusFilter").value;
+    const searchQuery = "{{ search_query }}";
 
-    fetch(
-      `/vehicles/api/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&type=${vehicleType}&show_all=true`,
-    )
+    let url = `/vehicles/api/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&type=${vehicleType}&show_all=true`;
+    if (searchQuery) {
+      url += `&search=${encodeURIComponent(searchQuery)}`;
+    }
+
+    fetch(url)
       .then((response) => response.json())
       .then((data) => {
         // Clear existing markers
@@ -270,6 +274,33 @@
                     `);
 
           vehicleMarkers.push(marker);
+
+          // Check if this vehicle matches the search query for highlighting
+          const searchQuery = "{{ search_query }}".toLowerCase();
+          if (
+            searchQuery &&
+            (vehicle.brand.toLowerCase().includes(searchQuery) ||
+              vehicle.model.toLowerCase().includes(searchQuery) ||
+              vehicle.license_plate?.toLowerCase().includes(searchQuery) ||
+              vehicle.vehicle_code.toLowerCase().includes(searchQuery))
+          ) {
+            // Highlight this vehicle - zoom to it and open popup
+            setTimeout(() => {
+              map.setView([vehicle.latitude, vehicle.longitude], 18);
+              marker.openPopup();
+
+              // Add a temporary highlight effect
+              const markerElement = marker.getElement();
+              if (markerElement) {
+                markerElement.style.filter = "drop-shadow(0 0 10px #ff6b35)";
+                markerElement.style.transform = "scale(1.2)";
+                setTimeout(() => {
+                  markerElement.style.filter = "";
+                  markerElement.style.transform = "";
+                }, 3000);
+              }
+            }, 1000); // Delay to ensure map is loaded
+          }
 
           // Add to list
           const cardOpacity = canRent ? "1" : "0.6";
