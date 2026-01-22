@@ -12,10 +12,7 @@
             <label class="form-label">Loại xe</label>
             <select class="form-select" id="vehicleTypeFilter">
               <option value="all">Tất cả</option>
-              <option value="bike">Xe đạp</option>
               <option value="motorbike">Xe máy</option>
-              <option value="ebike">Xe đạp điện</option>
-              <option value="scooter">Scooter</option>
               <option value="car">Ô tô</option>
             </select>
           </div>
@@ -197,7 +194,7 @@
     const radius = document.getElementById("radiusFilter").value;
 
     fetch(
-      `/vehicles/api/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&type=${vehicleType}&show_all=true`
+      `/vehicles/api/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}&type=${vehicleType}&show_all=true`,
     )
       .then((response) => response.json())
       .then((data) => {
@@ -218,18 +215,8 @@
           return;
         }
 
-        // Add summary
-        vehicleList.innerHTML = `
-                <div class="alert alert-info py-2 px-2 mb-2">
-                    <small>
-                        <strong>Tổng: ${data.count} xe</strong><br>
-                        ✅ Khả dụng: ${data.status_counts.available || 0}<br>
-                        🔒 Đã đặt: ${data.status_counts.reserved || 0}<br>
-                        🚗 Đang dùng: ${data.status_counts.in_use || 0}<br>
-                        🔧 Bảo trì: ${data.status_counts.maintenance || 0}
-                    </small>
-                </div>
-            `;
+        // Clear vehicle list
+        vehicleList.innerHTML = "";
 
         data.vehicles.forEach((vehicle, index) => {
           // Get status badge
@@ -253,19 +240,17 @@
           }).addTo(map).bindPopup(`
                         <div style="min-width: 200px;">
                             <strong>${vehicle.brand} ${
-            vehicle.model
-          }</strong><br>
+                              vehicle.model
+                            }</strong><br>
                             <span class="badge bg-primary">${getVehicleTypeName(
-                              vehicle.type
+                              vehicle.type,
                             )}</span>
                             ${statusBadge}<br>
                             <hr style="margin: 8px 0;">
+                            ${vehicle.license_plate ? `<i class="fas fa-id-card text-info"></i> Biển số: <strong>${vehicle.license_plate}</strong><br>` : ""}
                             <i class="fas fa-map-marker-alt text-danger"></i> ${
                               vehicle.distance
                             } km<br>
-                            <i class="fas fa-battery-full text-success"></i> Pin: ${
-                              vehicle.battery
-                            }%<br>
                             <i class="fas fa-money-bill-wave text-warning"></i> ${
                               vehicle.price_per_minute
                             } VND/phút<br>
@@ -293,17 +278,15 @@
                         <div class="card-body p-2">
                             <div class="d-flex justify-content-between align-items-start">
                                 <h6 class="mb-1">${vehicle.brand} ${
-            vehicle.model
-          }</h6>
+                                  vehicle.model
+                                }</h6>
                                 ${statusBadge}
                             </div>
+                            ${vehicle.license_plate ? `<small class="text-info"><i class="fas fa-id-card"></i> ${vehicle.license_plate}</small><br>` : ""}
                             <small class="text-muted">
                                 <i class="fas fa-map-marker-alt"></i> ${
                                   vehicle.distance
-                                } km<br>
-                                <i class="fas fa-battery-full"></i> ${
-                                  vehicle.battery
-                                }%
+                                } km
                             </small>
                             <div class="mt-2">
                                 ${
@@ -331,10 +314,7 @@
 
   function getVehicleIcon(type) {
     const iconMap = {
-      bike: "fa-bicycle",
       motorbike: "fa-motorcycle",
-      ebike: "fa-bicycle",
-      scooter: "fa-motorcycle",
       car: "fa-car",
     };
 
@@ -351,10 +331,7 @@
 
   function getVehicleIconByStatus(type, status) {
     const iconMap = {
-      bike: "fa-bicycle",
       motorbike: "fa-motorcycle",
-      ebike: "fa-bicycle",
-      scooter: "fa-motorcycle",
       car: "fa-car",
     };
 
@@ -377,10 +354,7 @@
 
   function getVehicleTypeName(type) {
     const names = {
-      bike: "Xe đạp",
       motorbike: "Xe máy",
-      ebike: "Xe đạp điện",
-      scooter: "Scooter điện",
       car: "Ô tô",
     };
     return names[type] || type;
@@ -432,7 +406,7 @@
       const duration = Math.round(route.summary.totalTime / 60);
 
       alert(
-        `🚗 Chỉ đường đến ${vehicleName}\n\n📍 Khoảng cách: ${distance} km\n⏱️ Thời gian dự kiến: ${duration} phút`
+        `🚗 Chỉ đường đến ${vehicleName}\n\n📍 Khoảng cách: ${distance} km\n⏱️ Thời gian dự kiến: ${duration} phút`,
       );
     });
   }
