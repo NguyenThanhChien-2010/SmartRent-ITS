@@ -161,24 +161,7 @@ endblock %} {% block extra_css %}
         <small class="text-muted">chuyến</small>
       </div>
     </div>
-    <div class="col-md-3 mb-3">
-      <div class="stat-card">
-        <div class="stat-icon bg-info bg-opacity-10 text-info">
-          <i class="fas fa-star"></i>
-        </div>
-        <h6 class="text-muted">Trạng thái</h6>
-        <h3 class="mb-0">
-          {% if user.is_verified %}
-          <i class="fas fa-check-circle text-success"></i>
-          {% else %}
-          <i class="fas fa-times-circle text-warning"></i>
-          {% endif %}
-        </h3>
-        <small class="text-muted">
-          {% if user.is_verified %}Đã xác thực{% else %}Chưa xác thực{% endif %}
-        </small>
-      </div>
-    </div>
+    <div class="col-md-3 mb-3"></div>
     {% endif %}
   </div>
 
@@ -357,13 +340,11 @@ endblock %} {% block extra_css %}
                   <i class="fas fa-clock"></i> {{
                   trip.start_time.strftime('%d/%m/%Y %H:%M') }}
                 </small>
-                {% if trip.distance_km %}
                 <br />
                 <small class="text-muted">
-                  <i class="fas fa-road"></i> {{ "%.2f"|format(trip.distance_km)
-                  }} km
+                  <i class="fas fa-road"></i> 0 km
                 </small>
-                {% endif %} {% if trip.duration_minutes %}
+                {% if trip.duration_minutes %}
                 <small class="text-muted">
                   <i class="fas fa-hourglass-half"></i> {{
                   "%.0f"|format(trip.duration_minutes) }} phút
@@ -406,152 +387,10 @@ endblock %} {% block extra_css %}
   </div>
 
   <!-- Wallet & Payments -->
-  {% if user.role != 'admin' %}
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header bg-warning text-white">
-          <h5 class="mb-0">
-            <i class="fas fa-credit-card"></i> Giao dịch gần đây
-          </h5>
-        </div>
-        <div class="card-body">
-          {% if recent_payments %}
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Mã giao dịch</th>
-                  <th>Loại</th>
-                  <th>Số tiền</th>
-                  <th>Phương thức</th>
-                  <th>Trạng thái</th>
-                  <th>Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for payment in recent_payments %}
-                <tr>
-                  <td><code>{{ payment.payment_code }}</code></td>
-                  <td>
-                    {% if payment.trip_id %}
-                    <span class="badge bg-info">
-                      <i class="fas fa-car"></i> Chuyến đi
-                    </span>
-                    {% else %}
-                    <span class="badge bg-success">
-                      <i class="fas fa-arrow-down"></i> Nạp tiền
-                    </span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if payment.trip_id %}
-                    <span class="text-danger"
-                      >-{{ "{:,.0f}".format(payment.amount) }} ₫</span
-                    >
-                    {% else %}
-                    <span class="text-success"
-                      >+{{ "{:,.0f}".format(payment.amount) }} ₫</span
-                    >
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if payment.payment_method == 'wallet' %}
-                    <i class="fas fa-wallet"></i> Ví {% elif
-                    payment.payment_method == 'stripe' %}
-                    <i class="fab fa-cc-stripe"></i> Stripe {% elif
-                    payment.payment_method == 'momo' %}
-                    <i class="fas fa-mobile-alt"></i> MoMo {% else %}
-                    <i class="fas fa-credit-card"></i> {{ payment.payment_method
-                    }} {% endif %}
-                  </td>
-                  <td>
-                    {% if payment.payment_status == 'completed' %}
-                    <span class="badge bg-success">Thành công</span>
-                    {% elif payment.payment_status == 'pending' %}
-                    <span class="badge bg-warning">Đang xử lý</span>
-                    {% elif payment.payment_status == 'failed' %}
-                    <span class="badge bg-danger">Thất bại</span>
-                    {% else %}
-                    <span class="badge bg-secondary"
-                      >{{ payment.payment_status }}</span
-                    >
-                    {% endif %}
-                  </td>
-                  <td>
-                    <small
-                      >{{ payment.created_at.strftime('%d/%m/%Y %H:%M')
-                      }}</small
-                    >
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% else %}
-          <div class="text-center text-muted py-4">
-            <i class="fas fa-file-invoice-dollar fa-3x mb-3"></i>
-            <p>Chưa có giao dịch nào</p>
-          </div>
-          {% endif %}
-        </div>
-        <div class="card-footer">
-          <a
-            href="{{ url_for('payment.wallet') }}"
-            class="btn btn-outline-warning btn-sm w-100"
-          >
-            <i class="fas fa-wallet"></i> Quản lý ví
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+  {% if user.role != 'admin' %} {% endif %}
 
   <!-- Emergency Alerts (if any) -->
-  {% if user.emergency_alerts %}
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card border-danger">
-        <div class="card-header bg-danger text-white">
-          <h5 class="mb-0">
-            <i class="fas fa-exclamation-triangle"></i> Cảnh báo khẩn cấp
-          </h5>
-        </div>
-        <div class="card-body">
-          {% for alert in user.emergency_alerts[:5] %}
-          <div
-            class="alert alert-{% if alert.severity == 'critical' %}danger{% elif alert.severity == 'high' %}warning{% else %}info{% endif %}"
-            role="alert"
-          >
-            <div class="d-flex justify-content-between">
-              <div>
-                <strong>{{ alert.alert_code }}</strong> - {{ alert.alert_type }}
-                <br />
-                <small>{{ alert.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-              </div>
-              <span
-                class="badge bg-{% if alert.status == 'resolved' %}success{% elif alert.status == 'acknowledged' %}warning{% else %}danger{% endif %}"
-              >
-                {{ alert.status }}
-              </span>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="card-footer">
-          <a
-            href="{{ url_for('emergency.my_alerts') }}"
-            class="btn btn-outline-danger btn-sm w-100"
-          >
-            <i class="fas fa-list"></i> Xem tất cả cảnh báo
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+  {% if user.emergency_alerts %} {% endif %}
 </div>
 {% endblock %} {% block extra_js %}
 <script>
