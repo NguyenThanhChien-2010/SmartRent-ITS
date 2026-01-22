@@ -1,271 +1,348 @@
-{% extends "base.html" %}
-
-{% block title %}Thêm Phương Tiện{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Thêm Phương Tiện{% endblock %} {%
+block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-plus-circle"></i> Thêm Phương Tiện Mới</h2>
-                <a href="{{ url_for('admin.manage_vehicles') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Quay lại
-                </a>
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-plus-circle"></i> Thêm Phương Tiện Mới</h2>
+        <a
+          href="{{ url_for('admin.manage_vehicles') }}"
+          class="btn btn-secondary"
+        >
+          <i class="fas fa-arrow-left"></i> Quay lại
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('admin.add_vehicle') }}">
+            <div class="row">
+              <!-- Loại phương tiện -->
+              <div class="col-md-6 mb-3">
+                <label for="vehicle_type" class="form-label">
+                  <i class="fas fa-tag"></i> Loại phương tiện *
+                </label>
+                <select
+                  class="form-select"
+                  id="vehicle_type"
+                  name="vehicle_type"
+                  required
+                >
+                  <option value="">Chọn loại...</option>
+                  <option value="motorbike">Xe máy</option>
+                  <option value="car">Ô tô</option>
+                </select>
+              </div>
+
+              <!-- Hãng -->
+              <div class="col-md-6 mb-3">
+                <label for="brand" class="form-label">
+                  <i class="fas fa-industry"></i> Hãng *
+                </label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="brand"
+                  name="brand"
+                  placeholder="VD: Honda, Yamaha, Giant..."
+                  required
+                />
+              </div>
+
+              <!-- Model -->
+              <div class="col-md-6 mb-3">
+                <label for="model" class="form-label">
+                  <i class="fas fa-car"></i> Model *
+                </label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="model"
+                  name="model"
+                  placeholder="VD: Wave Alpha, Vision..."
+                  required
+                />
+              </div>
+
+              <!-- Biển số -->
+              <div class="col-md-6 mb-3">
+                <label for="license_plate" class="form-label">
+                  <i class="fas fa-id-card"></i> Biển số *
+                </label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="license_plate"
+                  name="license_plate"
+                  placeholder="VD: 59A1-12345"
+                  required
+                />
+              </div>
+
+              <!-- Màu sắc -->
+              <div class="col-md-6 mb-3">
+                <label for="color" class="form-label">
+                  <i class="fas fa-palette"></i> Màu sắc *
+                </label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="color"
+                  name="color"
+                  placeholder="VD: Đỏ, Xanh, Trắng..."
+                  required
+                />
+              </div>
+
+              <!-- Năm sản xuất -->
+              <div class="col-md-6 mb-3">
+                <label for="year" class="form-label">
+                  <i class="fas fa-calendar"></i> Năm sản xuất *
+                </label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="year"
+                  name="year"
+                  min="2000"
+                  max="2030"
+                  value="2024"
+                  required
+                />
+              </div>
+
+              <!-- Giá thuê -->
+              <div class="col-md-12 mb-3">
+                <label for="price_per_minute" class="form-label">
+                  <i class="fas fa-dollar-sign"></i> Giá thuê (VNĐ/phút) *
+                </label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="price_per_minute"
+                  name="price_per_minute"
+                  step="0.01"
+                  min="0"
+                  placeholder="VD: 50, 100, 200..."
+                  required
+                />
+              </div>
+
+              <!-- Vị trí GPS -->
+              <div class="col-12 mb-3">
+                <h5 class="mb-3">
+                  <i class="fas fa-map-marker-alt"></i> Vị trí GPS
+                </h5>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="latitude" class="form-label"
+                  >Latitude (Vĩ độ) *</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="latitude"
+                  name="latitude"
+                  step="0.0000001"
+                  placeholder="VD: 10.8230989"
+                  required
+                />
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="longitude" class="form-label"
+                  >Longitude (Kinh độ) *</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="longitude"
+                  name="longitude"
+                  step="0.0000001"
+                  placeholder="VD: 106.6296638"
+                  required
+                />
+              </div>
+
+              <!-- Map preview -->
+              <div class="col-12 mb-3">
+                <div id="map" style="height: 300px; border-radius: 8px"></div>
+                <small class="text-muted">
+                  <i class="fas fa-info-circle"></i> Click vào bản đồ để chọn vị
+                  trí, hoặc nhập tọa độ thủ công
+                </small>
+              </div>
+
+              <!-- Buttons -->
+              <div class="col-12">
+                <hr />
+                <div class="d-flex justify-content-between">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="history.back()"
+                  >
+                    <i class="fas fa-times"></i> Hủy
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-check"></i> Thêm phương tiện
+                  </button>
+                </div>
+              </div>
             </div>
+          </form>
         </div>
+      </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('admin.add_vehicle') }}">
-                        <div class="row">
-                            <!-- Loại phương tiện -->
-                            <div class="col-md-6 mb-3">
-                                <label for="vehicle_type" class="form-label">
-                                    <i class="fas fa-tag"></i> Loại phương tiện *
-                                </label>
-                                <select class="form-select" id="vehicle_type" name="vehicle_type" required>
-                                    <option value="">Chọn loại...</option>
-                                    <option value="bike">Xe đạp</option>
-                                    <option value="motorbike">Xe máy</option>
-                                    <option value="ebike">Xe đạp điện</option>
-                                    <option value="scooter">Xe scooter điện</option>
-                                    <option value="car">Ô tô</option>
-                                </select>
-                            </div>
+    <!-- Help panel -->
+    <div class="col-md-4">
+      <div class="card bg-light">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i class="fas fa-info-circle"></i> Hướng dẫn
+          </h5>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success"></i>
+              Tất cả trường có dấu (*) là bắt buộc
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success"></i>
+              Mã phương tiện và QR code sẽ tự động tạo
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success"></i>
+              Pin ban đầu mặc định là 100%
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success"></i>
+              Trạng thái ban đầu là "Có sẵn"
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success"></i>
+              Click vào bản đồ để chọn vị trí đỗ xe
+            </li>
+          </ul>
 
-                            <!-- Hãng -->
-                            <div class="col-md-6 mb-3">
-                                <label for="brand" class="form-label">
-                                    <i class="fas fa-industry"></i> Hãng *
-                                </label>
-                                <input type="text" class="form-control" id="brand" name="brand" 
-                                       placeholder="VD: Honda, Yamaha, Giant..." required>
-                            </div>
+          <hr />
 
-                            <!-- Model -->
-                            <div class="col-md-6 mb-3">
-                                <label for="model" class="form-label">
-                                    <i class="fas fa-car"></i> Model *
-                                </label>
-                                <input type="text" class="form-control" id="model" name="model" 
-                                       placeholder="VD: Wave Alpha, Vision..." required>
-                            </div>
-
-                            <!-- Biển số -->
-                            <div class="col-md-6 mb-3">
-                                <label for="license_plate" class="form-label">
-                                    <i class="fas fa-id-card"></i> Biển số *
-                                </label>
-                                <input type="text" class="form-control" id="license_plate" name="license_plate" 
-                                       placeholder="VD: 59A1-12345" required>
-                            </div>
-
-                            <!-- Màu sắc -->
-                            <div class="col-md-6 mb-3">
-                                <label for="color" class="form-label">
-                                    <i class="fas fa-palette"></i> Màu sắc *
-                                </label>
-                                <input type="text" class="form-control" id="color" name="color" 
-                                       placeholder="VD: Đỏ, Xanh, Trắng..." required>
-                            </div>
-
-                            <!-- Năm sản xuất -->
-                            <div class="col-md-6 mb-3">
-                                <label for="year" class="form-label">
-                                    <i class="fas fa-calendar"></i> Năm sản xuất *
-                                </label>
-                                <input type="number" class="form-control" id="year" name="year" 
-                                       min="2000" max="2030" value="2024" required>
-                            </div>
-
-                            <!-- Giá thuê -->
-                            <div class="col-md-12 mb-3">
-                                <label for="price_per_minute" class="form-label">
-                                    <i class="fas fa-dollar-sign"></i> Giá thuê (VNĐ/phút) *
-                                </label>
-                                <input type="number" class="form-control" id="price_per_minute" name="price_per_minute" 
-                                       step="0.01" min="0" placeholder="VD: 50, 100, 200..." required>
-                            </div>
-
-                            <!-- Vị trí GPS -->
-                            <div class="col-12 mb-3">
-                                <h5 class="mb-3"><i class="fas fa-map-marker-alt"></i> Vị trí GPS</h5>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="latitude" class="form-label">Latitude (Vĩ độ) *</label>
-                                <input type="number" class="form-control" id="latitude" name="latitude" 
-                                       step="0.0000001" placeholder="VD: 10.8230989" required>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="longitude" class="form-label">Longitude (Kinh độ) *</label>
-                                <input type="number" class="form-control" id="longitude" name="longitude" 
-                                       step="0.0000001" placeholder="VD: 106.6296638" required>
-                            </div>
-
-                            <!-- Map preview -->
-                            <div class="col-12 mb-3">
-                                <div id="map" style="height: 300px; border-radius: 8px;"></div>
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle"></i> Click vào bản đồ để chọn vị trí, hoặc nhập tọa độ thủ công
-                                </small>
-                            </div>
-
-                            <!-- Buttons -->
-                            <div class="col-12">
-                                <hr>
-                                <div class="d-flex justify-content-between">
-                                    <button type="button" class="btn btn-secondary" onclick="history.back()">
-                                        <i class="fas fa-times"></i> Hủy
-                                    </button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-check"></i> Thêm phương tiện
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+          <h6><i class="fas fa-lightbulb"></i> Gợi ý giá thuê:</h6>
+          <ul class="small">
+            <li>Xe đạp: 30-50 VNĐ/phút</li>
+            <li>Xe máy: 100-200 VNĐ/phút</li>
+            <li>Xe đạp điện: 50-100 VNĐ/phút</li>
+            <li>Scooter điện: 80-150 VNĐ/phút</li>
+            <li>Ô tô: 300-500 VNĐ/phút</li>
+          </ul>
         </div>
-
-        <!-- Help panel -->
-        <div class="col-md-4">
-            <div class="card bg-light">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-info-circle"></i> Hướng dẫn</h5>
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i> 
-                            Tất cả trường có dấu (*) là bắt buộc
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i> 
-                            Mã phương tiện và QR code sẽ tự động tạo
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i> 
-                            Pin ban đầu mặc định là 100%
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i> 
-                            Trạng thái ban đầu là "Có sẵn"
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i> 
-                            Click vào bản đồ để chọn vị trí đỗ xe
-                        </li>
-                    </ul>
-
-                    <hr>
-
-                    <h6><i class="fas fa-lightbulb"></i> Gợi ý giá thuê:</h6>
-                    <ul class="small">
-                        <li>Xe đạp: 30-50 VNĐ/phút</li>
-                        <li>Xe máy: 100-200 VNĐ/phút</li>
-                        <li>Xe đạp điện: 50-100 VNĐ/phút</li>
-                        <li>Scooter điện: 80-150 VNĐ/phút</li>
-                        <li>Ô tô: 300-500 VNĐ/phút</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Leaflet CSS & JS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener("DOMContentLoaded", function () {
     // Initialize map (centered at HCMC)
-    const map = L.map('map').setView([10.8230989, 106.6296638], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+    const map = L.map("map").setView([10.8230989, 106.6296638], 13);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
     }).addTo(map);
-    
+
     let marker = null;
-    
+
     // Update map when coordinates change
     function updateMarker(lat, lng) {
-        if (marker) {
-            map.removeLayer(marker);
-        }
-        
-        marker = L.marker([lat, lng]).addTo(map);
-        map.setView([lat, lng], 15);
+      if (marker) {
+        map.removeLayer(marker);
+      }
+
+      marker = L.marker([lat, lng]).addTo(map);
+      map.setView([lat, lng], 15);
     }
-    
+
     // Click on map to select location
-    map.on('click', function(e) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-        
-        document.getElementById('latitude').value = lat.toFixed(7);
-        document.getElementById('longitude').value = lng.toFixed(7);
-        
-        updateMarker(lat, lng);
+    map.on("click", function (e) {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+
+      document.getElementById("latitude").value = lat.toFixed(7);
+      document.getElementById("longitude").value = lng.toFixed(7);
+
+      updateMarker(lat, lng);
     });
-    
+
     // Update marker when typing coordinates
-    document.getElementById('latitude').addEventListener('change', function() {
-        const lat = parseFloat(this.value);
-        const lng = parseFloat(document.getElementById('longitude').value);
-        
-        if (!isNaN(lat) && !isNaN(lng)) {
-            updateMarker(lat, lng);
-        }
+    document.getElementById("latitude").addEventListener("change", function () {
+      const lat = parseFloat(this.value);
+      const lng = parseFloat(document.getElementById("longitude").value);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        updateMarker(lat, lng);
+      }
     });
-    
-    document.getElementById('longitude').addEventListener('change', function() {
-        const lat = parseFloat(document.getElementById('latitude').value);
+
+    document
+      .getElementById("longitude")
+      .addEventListener("change", function () {
+        const lat = parseFloat(document.getElementById("latitude").value);
         const lng = parseFloat(this.value);
-        
+
         if (!isNaN(lat) && !isNaN(lng)) {
-            updateMarker(lat, lng);
+          updateMarker(lat, lng);
         }
-    });
-    
+      });
+
     // Geolocation button
     if (navigator.geolocation) {
-        const geoBtn = document.createElement('button');
-        geoBtn.className = 'btn btn-sm btn-outline-primary mb-2';
-        geoBtn.innerHTML = '<i class="fas fa-location-arrow"></i> Lấy vị trí hiện tại';
-        geoBtn.type = 'button';
-        geoBtn.onclick = function() {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                document.getElementById('latitude').value = lat.toFixed(7);
-                document.getElementById('longitude').value = lng.toFixed(7);
-                
-                updateMarker(lat, lng);
-            });
-        };
-        
-        document.getElementById('map').parentElement.insertBefore(geoBtn, document.getElementById('map'));
+      const geoBtn = document.createElement("button");
+      geoBtn.className = "btn btn-sm btn-outline-primary mb-2";
+      geoBtn.innerHTML =
+        '<i class="fas fa-location-arrow"></i> Lấy vị trí hiện tại';
+      geoBtn.type = "button";
+      geoBtn.onclick = function () {
+        navigator.geolocation.getCurrentPosition(function (position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          document.getElementById("latitude").value = lat.toFixed(7);
+          document.getElementById("longitude").value = lng.toFixed(7);
+
+          updateMarker(lat, lng);
+        });
+      };
+
+      document
+        .getElementById("map")
+        .parentElement.insertBefore(geoBtn, document.getElementById("map"));
     }
-});
+  });
 </script>
 
 <style>
-#map {
+  #map {
     border: 2px solid #dee2e6;
-}
+  }
 
-.form-label {
+  .form-label {
     font-weight: 500;
-}
+  }
 
-.form-label i {
+  .form-label i {
     width: 20px;
-}
+  }
 </style>
 {% endblock %}

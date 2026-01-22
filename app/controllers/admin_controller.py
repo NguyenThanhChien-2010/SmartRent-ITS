@@ -491,7 +491,8 @@ def analytics():
 def iot_monitor():
     """Real-time IoT monitoring dashboard"""
     from flask import current_app
-    vehicles = Vehicle.query.all()
+    # Only get motorbikes and cars
+    vehicles = Vehicle.query.filter(Vehicle.vehicle_type.in_(['motorbike', 'car'])).all()
     
     # Prepare vehicle data for real-time display
     vehicle_data = [{

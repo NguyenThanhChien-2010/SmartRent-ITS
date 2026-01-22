@@ -84,6 +84,7 @@ def nearby_vehicles():
                 'type': vehicle.get('vehicle_type') if isinstance(vehicle, dict) else vehicle.vehicle_type,
                 'brand': vehicle.get('brand') if isinstance(vehicle, dict) else vehicle.brand,
                 'model': vehicle.get('model') if isinstance(vehicle, dict) else vehicle.model,
+                'license_plate': vehicle.get('license_plate') if isinstance(vehicle, dict) else vehicle.license_plate,
                 'latitude': v_lat,
                 'longitude': v_lng,
                 'distance': round(distance, 2),

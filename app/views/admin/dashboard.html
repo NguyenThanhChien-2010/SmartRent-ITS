@@ -1,484 +1,522 @@
-{% extends "base.html" %}
-
-{% block title %}Dashboard Quản trị - SmartRent{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Dashboard Quản trị - SmartRent{%
+endblock %} {% block content %}
 <div class="container-fluid mt-3">
-    <h2><i class="fas fa-chart-line"></i> Dashboard Quản trị</h2>
-    <hr>
-    
-    <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <a href="{{ url_for('admin.manage_users') }}" class="text-decoration-none">
-                <div class="card bg-primary text-white shadow-sm hover-shadow" style="cursor: pointer; transition: all 0.3s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1"><i class="fas fa-users"></i> Tổng người dùng</h6>
-                                <h3 class="mb-0">{{ stats.total_users }}</h3>
-                            </div>
-                            <div class="fs-1 opacity-50">
-                                <i class="fas fa-users"></i>
-                            </div>
-                        </div>
-                        <small class="mt-2 d-block opacity-75">
-                            <i class="fas fa-arrow-right"></i> Click để xem chi tiết
-                        </small>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="{{ url_for('admin.manage_vehicles') }}" class="text-decoration-none">
-                <div class="card bg-success text-white shadow-sm hover-shadow" style="cursor: pointer; transition: all 0.3s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1"><i class="fas fa-car"></i> Xe khả dụng</h6>
-                                <h3 class="mb-0">{{ stats.available_vehicles }}/{{ stats.total_vehicles }}</h3>
-                            </div>
-                            <div class="fs-1 opacity-50">
-                                <i class="fas fa-car"></i>
-                            </div>
-                        </div>
-                        <small class="mt-2 d-block opacity-75">
-                            <i class="fas fa-arrow-right"></i> Quản lý phương tiện
-                        </small>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="{{ url_for('admin.today_trips') }}" class="text-decoration-none">
-                <div class="card bg-info text-white shadow-sm hover-shadow" style="cursor: pointer; transition: all 0.3s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1"><i class="fas fa-route"></i> Chuyến đi hôm nay</h6>
-                                <h3 class="mb-0">{{ stats.today_trips }}</h3>
-                            </div>
-                            <div class="fs-1 opacity-50">
-                                <i class="fas fa-route"></i>
-                            </div>
-                        </div>
-                        <small class="mt-2 d-block opacity-75">
-                            <i class="fas fa-arrow-right"></i> Xem danh sách
-                        </small>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3">
-            <a href="{{ url_for('admin.today_revenue') }}" class="text-decoration-none">
-                <div class="card bg-warning text-white shadow-sm hover-shadow" style="cursor: pointer; transition: all 0.3s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1"><i class="fas fa-money-bill-wave"></i> Doanh thu hôm nay</h6>
-                                <h3 class="mb-0">{{ "{:,.0f}".format(stats.today_revenue) }}</h3>
-                                <small>VND</small>
-                            </div>
-                            <div class="fs-1 opacity-50">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </div>
-                        </div>
-                        <small class="mt-2 d-block opacity-75">
-                            <i class="fas fa-arrow-right"></i> Xem chi tiết
-                        </small>
-                    </div>
-                </div>
-            </a>
-        </div>
-    </div>
-    
-    <!-- Alert Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card border-primary">
-                <div class="card-body">
-                    <h6><i class="fas fa-car"></i> Xe đang sử dụng</h6>
-                    <h4>{{ stats.in_use_vehicles }}</h4>
-                    <small class="text-muted">{{ stats.active_trips }} chuyến đi đang diễn ra</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-warning">
-                <div class="card-body">
-                    <h6><i class="fas fa-wrench"></i> Xe cần bảo trì</h6>
-                    <h4>{{ stats.maintenance_vehicles }}</h4>
-                    <small class="text-muted">{{ stats.pending_maintenances }} lịch chờ xử lý</small>
-                    <a href="{{ url_for('admin.manage_maintenance') }}" class="btn btn-sm btn-warning mt-2">Xem chi tiết</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-danger">
-                <div class="card-body">
-                    <h6><i class="fas fa-exclamation-triangle"></i> Cảnh báo khẩn cấp</h6>
-                    <h4>{{ stats.open_alerts }}</h4>
-                    <small class="text-muted">Cần xử lý ngay</small>
-                    <a href="{{ url_for('admin.emergency_alerts') }}" class="btn btn-sm btn-danger mt-2">Xem chi tiết</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Row 2: Hazard Zones & Route Analytics -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <a href="{{ url_for('admin.hazard_zones') }}" class="text-decoration-none">
-                <div class="card border-danger shadow-sm hover-shadow" style="cursor: pointer; transition: all 0.3s;">
-                    <div class="card-body">
-                        <h6><i class="fas fa-map-marked-alt text-danger"></i> Vùng Nguy Hiểm</h6>
-                        <h4 class="text-danger">{{ stats.get('hazard_zones', 0) }}</h4>
-                        <small class="text-muted">Zones đang active</small>
-                        <div class="mt-2">
-                            <i class="fas fa-arrow-right text-primary"></i> <small>Quản lý zones</small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-6">
-            <a href="{{ url_for('admin.route_analytics') }}" class="text-decoration-none">
-                <div class="card border-info shadow-sm hover-shadow" style="cursor: pointer; transition: all 0.3s;">
-                    <div class="card-body">
-                        <h6><i class="fas fa-chart-line text-info"></i> Route Analytics</h6>
-                        <h4 class="text-info">TIER 1</h4>
-                        <small class="text-muted">Thống kê routes đã plan</small>
-                        <div class="mt-2">
-                            <i class="fas fa-arrow-right text-primary"></i> <small>Xem dashboard</small>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-    </div>
-    
-    <!-- Charts -->
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Doanh thu 7 ngày qua</h5>
-                </div>
-                <div class="card-body" style="min-height: 300px;">
-                    <canvas id="revenueChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Sử dụng theo loại xe</h5>
-                </div>
-                <div class="card-body" style="min-height: 300px;">
-                    <canvas id="vehicleTypeChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Giờ cao điểm</h5>
-                </div>
-                <div class="card-body" style="min-height: 300px;">
-                    <canvas id="peakHoursChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+  <h2><i class="fas fa-chart-line"></i> Dashboard Quản trị</h2>
+  <hr />
 
-{% block extra_js %}
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <a
+        href="{{ url_for('admin.manage_users') }}"
+        class="text-decoration-none"
+      >
+        <div
+          class="card bg-primary text-white shadow-sm hover-shadow"
+          style="cursor: pointer; transition: all 0.3s"
+        >
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fas fa-users"></i> Tổng người dùng
+                </h6>
+                <h3 class="mb-0">{{ stats.total_users }}</h3>
+              </div>
+              <div class="fs-1 opacity-50">
+                <i class="fas fa-users"></i>
+              </div>
+            </div>
+            <small class="mt-2 d-block opacity-75">
+              <i class="fas fa-arrow-right"></i> Click để xem chi tiết
+            </small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a
+        href="{{ url_for('admin.manage_vehicles') }}"
+        class="text-decoration-none"
+      >
+        <div
+          class="card bg-success text-white shadow-sm hover-shadow"
+          style="cursor: pointer; transition: all 0.3s"
+        >
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1"><i class="fas fa-car"></i> Xe khả dụng</h6>
+                <h3 class="mb-0">
+                  {{ stats.available_vehicles }}/{{ stats.total_vehicles }}
+                </h3>
+              </div>
+              <div class="fs-1 opacity-50">
+                <i class="fas fa-car"></i>
+              </div>
+            </div>
+            <small class="mt-2 d-block opacity-75">
+              <i class="fas fa-arrow-right"></i> Quản lý phương tiện
+            </small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('admin.today_trips') }}" class="text-decoration-none">
+        <div
+          class="card bg-info text-white shadow-sm hover-shadow"
+          style="cursor: pointer; transition: all 0.3s"
+        >
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fas fa-route"></i> Chuyến đi hôm nay
+                </h6>
+                <h3 class="mb-0">{{ stats.today_trips }}</h3>
+              </div>
+              <div class="fs-1 opacity-50">
+                <i class="fas fa-route"></i>
+              </div>
+            </div>
+            <small class="mt-2 d-block opacity-75">
+              <i class="fas fa-arrow-right"></i> Xem danh sách
+            </small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a
+        href="{{ url_for('admin.today_revenue') }}"
+        class="text-decoration-none"
+      >
+        <div
+          class="card bg-warning text-white shadow-sm hover-shadow"
+          style="cursor: pointer; transition: all 0.3s"
+        >
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fas fa-money-bill-wave"></i> Doanh thu hôm nay
+                </h6>
+                <h3 class="mb-0">
+                  {{ "{:,.0f}".format(stats.today_revenue) }}
+                </h3>
+                <small>VND</small>
+              </div>
+              <div class="fs-1 opacity-50">
+                <i class="fas fa-money-bill-wave"></i>
+              </div>
+            </div>
+            <small class="mt-2 d-block opacity-75">
+              <i class="fas fa-arrow-right"></i> Xem chi tiết
+            </small>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Alert Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-primary">
+        <div class="card-body">
+          <h6><i class="fas fa-car"></i> Xe đang sử dụng</h6>
+          <h4>{{ stats.in_use_vehicles }}</h4>
+          <small class="text-muted"
+            >{{ stats.active_trips }} chuyến đi đang diễn ra</small
+          >
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-danger">
+        <div class="card-body">
+          <h6><i class="fas fa-exclamation-triangle"></i> Cảnh báo khẩn cấp</h6>
+          <h4>{{ stats.open_alerts }}</h4>
+          <small class="text-muted">Cần xử lý ngay</small>
+          <a
+            href="{{ url_for('admin.emergency_alerts') }}"
+            class="btn btn-sm btn-danger mt-2"
+            >Xem chi tiết</a
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Hazard Zones & Route Analytics -->
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <a
+        href="{{ url_for('admin.hazard_zones') }}"
+        class="text-decoration-none"
+      >
+        <div
+          class="card border-danger shadow-sm hover-shadow"
+          style="cursor: pointer; transition: all 0.3s"
+        >
+          <div class="card-body">
+            <h6>
+              <i class="fas fa-map-marked-alt text-danger"></i> Vùng Nguy Hiểm
+            </h6>
+            <h4 class="text-danger">{{ stats.get('hazard_zones', 0) }}</h4>
+            <small class="text-muted">Zones đang active</small>
+            <div class="mt-2">
+              <i class="fas fa-arrow-right text-primary"></i>
+              <small>Quản lý zones</small>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-6">
+      <a
+        href="{{ url_for('admin.route_analytics') }}"
+        class="text-decoration-none"
+      >
+        <div
+          class="card border-info shadow-sm hover-shadow"
+          style="cursor: pointer; transition: all 0.3s"
+        >
+          <div class="card-body">
+            <h6><i class="fas fa-chart-line text-info"></i> Route Analytics</h6>
+            <h4 class="text-info">TIER 1</h4>
+            <small class="text-muted">Thống kê routes đã plan</small>
+            <div class="mt-2">
+              <i class="fas fa-arrow-right text-primary"></i>
+              <small>Xem dashboard</small>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h5>Doanh thu 7 ngày qua</h5>
+        </div>
+        <div class="card-body" style="min-height: 300px">
+          <canvas id="revenueChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h5>Sử dụng theo loại xe</h5>
+        </div>
+        <div class="card-body" style="min-height: 300px">
+          <canvas id="vehicleTypeChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header">
+          <h5>Giờ cao điểm</h5>
+        </div>
+        <div class="card-body" style="min-height: 300px">
+          <canvas id="peakHoursChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <style>
-    .card {
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
-    }
-    .card:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-        transform: translateY(-2px);
-    }
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 12px 12px 0 0 !important;
-        padding: 1rem 1.25rem;
-        font-weight: 600;
-    }
-    .card-body {
-        padding: 1.5rem;
-    }
-    canvas {
-        max-height: 300px !important;
-    }
+  .card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+  }
+  .card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+  }
+  .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+  }
+  .card-body {
+    padding: 1.5rem;
+  }
+  canvas {
+    max-height: 300px !important;
+  }
 </style>
 <script>
-// Vehicle Type Vietnamese Names
-const vehicleTypeNames = {
-    'bike': 'Xe đạp',
-    'motorbike': 'Xe máy',
-    'car': 'Ô tô'
-};
+  // Vehicle Type Vietnamese Names
+  const vehicleTypeNames = {
+      'bike': 'Xe đạp',
+      'motorbike': 'Xe máy',
+      'car': 'Ô tô'
+  };
 
-// Revenue Chart - Line with Gradient
-const revenueData = {{ revenue_data | tojson }};
+  // Revenue Chart - Line with Gradient
+  const revenueData = {{ revenue_data | tojson }};
 
-const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-const revenueGradient = revenueCtx.createLinearGradient(0, 0, 0, 300);
-revenueGradient.addColorStop(0, 'rgba(75, 192, 192, 0.4)');
-revenueGradient.addColorStop(1, 'rgba(75, 192, 192, 0.0)');
+  const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+  const revenueGradient = revenueCtx.createLinearGradient(0, 0, 0, 300);
+  revenueGradient.addColorStop(0, 'rgba(75, 192, 192, 0.4)');
+  revenueGradient.addColorStop(1, 'rgba(75, 192, 192, 0.0)');
 
-new Chart(revenueCtx, {
-    type: 'line',
-    data: {
-        labels: revenueData.map(d => d.date),
-        datasets: [{
-            label: 'Doanh thu',
-            data: revenueData.map(d => d.revenue),
-            borderColor: '#4BC0C0',
-            backgroundColor: revenueGradient,
-            borderWidth: 3,
-            tension: 0.4,
-            fill: true,
-            pointRadius: 5,
-            pointHoverRadius: 8,
-            pointBackgroundColor: '#fff',
-            pointBorderColor: '#4BC0C0',
-            pointBorderWidth: 2,
-            pointHoverBackgroundColor: '#4BC0C0',
-            pointHoverBorderColor: '#fff',
-            pointHoverBorderWidth: 3
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        },
-        plugins: {
-            legend: {
-                display: true,
-                position: 'top',
-                labels: {
-                    usePointStyle: true,
-                    padding: 15,
-                    font: {
-                        size: 13,
-                        weight: '600'
-                    }
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                titleFont: {
-                    size: 14,
-                    weight: 'bold'
-                },
-                bodyFont: {
-                    size: 13
-                },
-                callbacks: {
-                    label: function(context) {
-                        return 'Doanh thu: ' + context.parsed.y.toLocaleString('vi-VN') + ' VND';
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: {
-                    color: 'rgba(0, 0, 0, 0.05)',
-                    drawBorder: false
-                },
-                ticks: {
-                    font: {
-                        size: 11
-                    },
-                    callback: function(value) {
-                        if (value >= 1000000) {
-                            return (value / 1000000).toFixed(1) + 'M';
-                        } else if (value >= 1000) {
-                            return (value / 1000).toFixed(0) + 'K';
-                        }
-                        return value.toLocaleString('vi-VN');
-                    }
-                }
-            },
-            x: {
-                grid: {
-                    display: false,
-                    drawBorder: false
-                },
-                ticks: {
-                    font: {
-                        size: 11
-                    }
-                }
-            }
-        }
-    }
-});
+  new Chart(revenueCtx, {
+      type: 'line',
+      data: {
+          labels: revenueData.map(d => d.date),
+          datasets: [{
+              label: 'Doanh thu',
+              data: revenueData.map(d => d.revenue),
+              borderColor: '#4BC0C0',
+              backgroundColor: revenueGradient,
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointRadius: 5,
+              pointHoverRadius: 8,
+              pointBackgroundColor: '#fff',
+              pointBorderColor: '#4BC0C0',
+              pointBorderWidth: 2,
+              pointHoverBackgroundColor: '#4BC0C0',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 3
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          interaction: {
+              mode: 'index',
+              intersect: false,
+          },
+          plugins: {
+              legend: {
+                  display: true,
+                  position: 'top',
+                  labels: {
+                      usePointStyle: true,
+                      padding: 15,
+                      font: {
+                          size: 13,
+                          weight: '600'
+                      }
+                  }
+              },
+              tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  padding: 12,
+                  titleFont: {
+                      size: 14,
+                      weight: 'bold'
+                  },
+                  bodyFont: {
+                      size: 13
+                  },
+                  callbacks: {
+                      label: function(context) {
+                          return 'Doanh thu: ' + context.parsed.y.toLocaleString('vi-VN') + ' VND';
+                      }
+                  }
+              }
+          },
+          scales: {
+              y: {
+                  beginAtZero: true,
+                  grid: {
+                      color: 'rgba(0, 0, 0, 0.05)',
+                      drawBorder: false
+                  },
+                  ticks: {
+                      font: {
+                          size: 11
+                      },
+                      callback: function(value) {
+                          if (value >= 1000000) {
+                              return (value / 1000000).toFixed(1) + 'M';
+                          } else if (value >= 1000) {
+                              return (value / 1000).toFixed(0) + 'K';
+                          }
+                          return value.toLocaleString('vi-VN');
+                      }
+                  }
+              },
+              x: {
+                  grid: {
+                      display: false,
+                      drawBorder: false
+                  },
+                  ticks: {
+                      font: {
+                          size: 11
+                      }
+                  }
+              }
+          }
+      }
+  });
 
-// Vehicle Type Chart - Pie with Labels
-const vehicleUsageData = {{ vehicle_usage_data | tojson }};
+  // Vehicle Type Chart - Pie with Labels
+  const vehicleUsageData = {{ vehicle_usage_data | tojson }};
 
-new Chart(document.getElementById('vehicleTypeChart'), {
-    type: 'doughnut',
-    data: {
-        labels: vehicleUsageData.map(d => vehicleTypeNames[d.type] || d.type),
-        datasets: [{
-            data: vehicleUsageData.map(d => d.count),
-            backgroundColor: [
-                '#FF6384',  // Pink for bike
-                '#36A2EB',  // Blue for car
-                '#FFCE56',  // Yellow for motorbike
-                '#4BC0C0',
-                '#9966FF'
-            ],
-            borderWidth: 3,
-            borderColor: '#fff',
-            hoverBorderWidth: 4,
-            hoverBorderColor: '#fff'
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        cutout: '50%',
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 20,
-                    font: {
-                        size: 13,
-                        weight: '600'
-                    },
-                    usePointStyle: true,
-                    pointStyle: 'circle'
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                callbacks: {
-                    label: function(context) {
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((context.parsed / total) * 100).toFixed(1);
-                        return context.label + ': ' + context.parsed + ' chuyến (' + percentage + '%)';
-                    }
-                }
-            },
-            datalabels: {
-                color: '#fff',
-                font: {
-                    weight: 'bold',
-                    size: 14
-                },
-                formatter: function(value, context) {
-                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                    const percentage = ((value / total) * 100).toFixed(1);
-                    return percentage + '%';
-                }
-            }
-        }
-    },
-    plugins: [ChartDataLabels]
-});
+  new Chart(document.getElementById('vehicleTypeChart'), {
+      type: 'doughnut',
+      data: {
+          labels: vehicleUsageData.map(d => vehicleTypeNames[d.type] || d.type),
+          datasets: [{
+              data: vehicleUsageData.map(d => d.count),
+              backgroundColor: [
+                  '#FF6384',  // Pink for bike
+                  '#36A2EB',  // Blue for car
+                  '#FFCE56',  // Yellow for motorbike
+                  '#4BC0C0',
+                  '#9966FF'
+              ],
+              borderWidth: 3,
+              borderColor: '#fff',
+              hoverBorderWidth: 4,
+              hoverBorderColor: '#fff'
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          cutout: '50%',
+          plugins: {
+              legend: {
+                  position: 'bottom',
+                  labels: {
+                      padding: 20,
+                      font: {
+                          size: 13,
+                          weight: '600'
+                      },
+                      usePointStyle: true,
+                      pointStyle: 'circle'
+                  }
+              },
+              tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  padding: 12,
+                  callbacks: {
+                      label: function(context) {
+                          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                          const percentage = ((context.parsed / total) * 100).toFixed(1);
+                          return context.label + ': ' + context.parsed + ' chuyến (' + percentage + '%)';
+                      }
+                  }
+              },
+              datalabels: {
+                  color: '#fff',
+                  font: {
+                      weight: 'bold',
+                      size: 14
+                  },
+                  formatter: function(value, context) {
+                      const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                      const percentage = ((value / total) * 100).toFixed(1);
+                      return percentage + '%';
+                  }
+              }
+          }
+      },
+      plugins: [ChartDataLabels]
+  });
 
-// Peak Hours Chart - Bar with Gradient
-const peakHoursData = {{ peak_hours_data | tojson }};
+  // Peak Hours Chart - Bar with Gradient
+  const peakHoursData = {{ peak_hours_data | tojson }};
 
-const peakCtx = document.getElementById('peakHoursChart').getContext('2d');
-const peakGradient = peakCtx.createLinearGradient(0, 0, 0, 300);
-peakGradient.addColorStop(0, 'rgba(54, 162, 235, 0.8)');
-peakGradient.addColorStop(1, 'rgba(54, 162, 235, 0.3)');
+  const peakCtx = document.getElementById('peakHoursChart').getContext('2d');
+  const peakGradient = peakCtx.createLinearGradient(0, 0, 0, 300);
+  peakGradient.addColorStop(0, 'rgba(54, 162, 235, 0.8)');
+  peakGradient.addColorStop(1, 'rgba(54, 162, 235, 0.3)');
 
-new Chart(peakCtx, {
-    type: 'bar',
-    data: {
-        labels: peakHoursData.map(d => {
-            const hour = parseInt(d.hour);
-            return hour + ':00';
-        }),
-        datasets: [{
-            label: 'Số chuyến đi',
-            data: peakHoursData.map(d => d.count),
-            backgroundColor: peakGradient,
-            borderColor: '#36A2EB',
-            borderWidth: 2,
-            borderRadius: 8,
-            borderSkipped: false,
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                display: true,
-                position: 'top',
-                labels: {
-                    usePointStyle: true,
-                    padding: 15,
-                    font: {
-                        size: 13,
-                        weight: '600'
-                    }
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                callbacks: {
-                    label: function(context) {
-                        return 'Số chuyến: ' + context.parsed.y;
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: {
-                    color: 'rgba(0, 0, 0, 0.05)',
-                    drawBorder: false
-                },
-                ticks: {
-                    stepSize: 1,
-                    font: {
-                        size: 11
-                    }
-                }
-            },
-            x: {
-                grid: {
-                    display: false,
-                    drawBorder: false
-                },
-                ticks: {
-                    font: {
-                        size: 11
-                    }
-                }
-            }
-        }
-    }
-});
+  new Chart(peakCtx, {
+      type: 'bar',
+      data: {
+          labels: peakHoursData.map(d => {
+              const hour = parseInt(d.hour);
+              return hour + ':00';
+          }),
+          datasets: [{
+              label: 'Số chuyến đi',
+              data: peakHoursData.map(d => d.count),
+              backgroundColor: peakGradient,
+              borderColor: '#36A2EB',
+              borderWidth: 2,
+              borderRadius: 8,
+              borderSkipped: false,
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+              legend: {
+                  display: true,
+                  position: 'top',
+                  labels: {
+                      usePointStyle: true,
+                      padding: 15,
+                      font: {
+                          size: 13,
+                          weight: '600'
+                      }
+                  }
+              },
+              tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  padding: 12,
+                  callbacks: {
+                      label: function(context) {
+                          return 'Số chuyến: ' + context.parsed.y;
+                      }
+                  }
+              }
+          },
+          scales: {
+              y: {
+                  beginAtZero: true,
+                  grid: {
+                      color: 'rgba(0, 0, 0, 0.05)',
+                      drawBorder: false
+                  },
+                  ticks: {
+                      stepSize: 1,
+                      font: {
+                          size: 11
+                      }
+                  }
+              },
+              x: {
+                  grid: {
+                      display: false,
+                      drawBorder: false
+                  },
+                  ticks: {
+                      font: {
+                          size: 11
+                      }
+                  }
+              }
+          }
+      }
+  });
 </script>
 {% endblock %}

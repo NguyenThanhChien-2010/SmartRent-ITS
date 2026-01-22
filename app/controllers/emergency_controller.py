@@ -117,8 +117,8 @@ def my_alerts():
             .order_by(EmergencyAlert.created_at.desc()).all()
         is_admin = False
     
-    # Get all available vehicles for the emergency form
-    user_vehicles = Vehicle.query.all()
+    # Get available motorbikes and cars for the emergency form (only these 2 types)
+    user_vehicles = Vehicle.query.filter(Vehicle.vehicle_type.in_(['motorbike', 'car'])).all()
     
     return render_template('emergency/my_alerts.html', alerts=alerts, is_admin=is_admin, user_vehicles=user_vehicles)
 
