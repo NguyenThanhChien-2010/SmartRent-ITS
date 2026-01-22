@@ -34,7 +34,7 @@ class Config:
     # Không cần Stripe hay payment gateway bên ngoài
     ENABLE_EXTERNAL_PAYMENT = os.environ.get('ENABLE_EXTERNAL_PAYMENT', 'false').lower() == 'true'
 
-    # Firebase / Firestore
+    ## Firebase / Firestore
     FIREBASE_ENABLED = os.environ.get('FIREBASE_ENABLED', 'true').lower() == 'true'
     FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'smartrent-6eadb')
     FIREBASE_CREDENTIALS_PATH = os.environ.get('FIREBASE_CREDENTIALS_PATH', 'smartrent-firebase-credentials.json')
