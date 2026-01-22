@@ -356,8 +356,11 @@ khẩn cấp{% else %}Cảnh báo khẩn cấp của tôi{% endif %} - SmartRent
               <option value="">-- Không có --</option>
               {% for vehicle in user_vehicles %}
               <option value="{{ vehicle.id }}">
-                {{ vehicle.vehicle_code }} - {{ vehicle.brand }} {{
-                vehicle.model }}
+                {% if vehicle.license_plate %}
+                  {{ vehicle.license_plate }} - {{ vehicle.brand }} {{ vehicle.model }}
+                {% else %}
+                  {{ vehicle.vehicle_code }} - {{ vehicle.brand }} {{ vehicle.model }}
+                {% endif %}
               </option>
               {% endfor %}
             </select>
