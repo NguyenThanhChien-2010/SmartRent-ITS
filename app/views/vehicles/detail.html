@@ -67,21 +67,6 @@
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Nhiên liệu:</strong></td>
-                  <td>
-                    {% if vehicle.fuel_level %}
-                    <div class="progress">
-                      <div
-                        class="progress-bar bg-info"
-                        style="width: {{ vehicle.fuel_level }}%"
-                      >
-                        {{ vehicle.fuel_level }}%
-                      </div>
-                    </div>
-                    {% endif %}
-                  </td>
-                </tr>
-                <tr>
                   <td><strong>Quãng đường:</strong></td>
                   <td>{{ "{:,.0f}".format(vehicle.odometer) }} km</td>
                 </tr>

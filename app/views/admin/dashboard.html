@@ -6,7 +6,7 @@ endblock %} {% block content %}
 
   <!-- Stats Cards -->
   <div class="row mb-4">
-    <div class="col-md-3">
+    <div class="col">
       <a
         href="{{ url_for('admin.manage_users') }}"
         class="text-decoration-none"
@@ -34,7 +34,7 @@ endblock %} {% block content %}
         </div>
       </a>
     </div>
-    <div class="col-md-3">
+    <div class="col">
       <a
         href="{{ url_for('admin.manage_vehicles') }}"
         class="text-decoration-none"
@@ -62,7 +62,7 @@ endblock %} {% block content %}
         </div>
       </a>
     </div>
-    <div class="col-md-3">
+    <div class="col">
       <a href="{{ url_for('admin.today_trips') }}" class="text-decoration-none">
         <div
           class="card bg-info text-white shadow-sm hover-shadow"
@@ -87,7 +87,7 @@ endblock %} {% block content %}
         </div>
       </a>
     </div>
-    <div class="col-md-3">
+    <div class="col">
       <a
         href="{{ url_for('admin.today_revenue') }}"
         class="text-decoration-none"
@@ -118,23 +118,8 @@ endblock %} {% block content %}
         </div>
       </a>
     </div>
-  </div>
-
-  <!-- Alert Cards -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card border-primary">
-        <div class="card-body">
-          <h6><i class="fas fa-car"></i> Xe đang sử dụng</h6>
-          <h4>{{ stats.in_use_vehicles }}</h4>
-          <small class="text-muted"
-            >{{ stats.active_trips }} chuyến đi đang diễn ra</small
-          >
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-danger">
+    <div class="col">
+      <div class="card border-danger shadow-sm">
         <div class="card-body">
           <h6><i class="fas fa-exclamation-triangle"></i> Cảnh báo khẩn cấp</h6>
           <h4>{{ stats.open_alerts }}</h4>
@@ -216,19 +201,6 @@ endblock %} {% block content %}
         </div>
         <div class="card-body" style="min-height: 300px">
           <canvas id="vehicleTypeChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="row mt-4">
-    <div class="col-md-12">
-      <div class="card">
-        <div class="card-header">
-          <h5>Giờ cao điểm</h5>
-        </div>
-        <div class="card-body" style="min-height: 300px">
-          <canvas id="peakHoursChart"></canvas>
         </div>
       </div>
     </div>
@@ -437,86 +409,6 @@ endblock %} {% block content %}
           }
       },
       plugins: [ChartDataLabels]
-  });
-
-  // Peak Hours Chart - Bar with Gradient
-  const peakHoursData = {{ peak_hours_data | tojson }};
-
-  const peakCtx = document.getElementById('peakHoursChart').getContext('2d');
-  const peakGradient = peakCtx.createLinearGradient(0, 0, 0, 300);
-  peakGradient.addColorStop(0, 'rgba(54, 162, 235, 0.8)');
-  peakGradient.addColorStop(1, 'rgba(54, 162, 235, 0.3)');
-
-  new Chart(peakCtx, {
-      type: 'bar',
-      data: {
-          labels: peakHoursData.map(d => {
-              const hour = parseInt(d.hour);
-              return hour + ':00';
-          }),
-          datasets: [{
-              label: 'Số chuyến đi',
-              data: peakHoursData.map(d => d.count),
-              backgroundColor: peakGradient,
-              borderColor: '#36A2EB',
-              borderWidth: 2,
-              borderRadius: 8,
-              borderSkipped: false,
-          }]
-      },
-      options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: {
-              legend: {
-                  display: true,
-                  position: 'top',
-                  labels: {
-                      usePointStyle: true,
-                      padding: 15,
-                      font: {
-                          size: 13,
-                          weight: '600'
-                      }
-                  }
-              },
-              tooltip: {
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  padding: 12,
-                  callbacks: {
-                      label: function(context) {
-                          return 'Số chuyến: ' + context.parsed.y;
-                      }
-                  }
-              }
-          },
-          scales: {
-              y: {
-                  beginAtZero: true,
-                  grid: {
-                      color: 'rgba(0, 0, 0, 0.05)',
-                      drawBorder: false
-                  },
-                  ticks: {
-                      stepSize: 1,
-                      font: {
-                          size: 11
-                      }
-                  }
-              },
-              x: {
-                  grid: {
-                      display: false,
-                      drawBorder: false
-                  },
-                  ticks: {
-                      font: {
-                          size: 11
-                      }
-                  }
-              }
-          }
-      }
   });
 </script>
 {% endblock %}

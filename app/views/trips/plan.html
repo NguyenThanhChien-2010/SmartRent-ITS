@@ -152,12 +152,6 @@ endblock %} {% block extra_css %}
               style="height: 400px; border-radius: 8px"
               class="mt-3"
             ></div>
-
-            <!-- Available Vehicles -->
-            <div class="mt-3">
-              <h6><i class="fas fa-car"></i> Xe khả dụng gần điểm xuất phát</h6>
-              <div id="nearbyVehicles"></div>
-            </div>
           </div>
         </div>
       </div>
@@ -281,7 +275,6 @@ endblock %} {% block extra_css %}
 
       currentRoutePoints = route.route_points;
       displayRoute(route);
-      showNearbyVehicles(vehicleType);
 
       // Check for hazards
       checkRouteHazards(route.route_points);
@@ -402,36 +395,6 @@ endblock %} {% block extra_css %}
       .bindPopup('<strong style="color: #dc3545;">🏁 Điểm đến</strong>');
 
     map.fitBounds(routePoints, { padding: [50, 50] });
-  }
-
-  function showNearbyVehicles(vehicleType) {
-    const container = document.getElementById("nearbyVehicles");
-    container.innerHTML =
-      '<div class="spinner-border spinner-border-sm"></div> Đang tìm xe...';
-
-    // Demo vehicles
-    setTimeout(function () {
-      container.innerHTML = `
-                <div class="list-group">
-                    <a href="#" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1"><i class="fas fa-motorcycle text-success"></i> Honda Wave Alpha</h6>
-                            <small class="text-muted">0.3 km</small>
-                        </div>
-                        <p class="mb-1 small">Biển số: 51F-12345</p>
-                        <small class="text-primary">500 VND/phút</small>
-                    </a>
-                    <a href="#" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1"><i class="fas fa-motorcycle text-info"></i> Yamaha Exciter</h6>
-                            <small class="text-muted">0.5 km</small>
-                        </div>
-                        <p class="mb-1 small">Biển số: 51H-67890</p>
-                        <small class="text-primary">800 VND/phút</small>
-                    </a>
-                </div>
-            `;
-    }, 500);
   }
 
   // ==========================================
