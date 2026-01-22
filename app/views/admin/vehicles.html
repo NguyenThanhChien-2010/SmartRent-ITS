@@ -85,7 +85,6 @@
                             <th>Hãng/Model</th>
                             <th>Biển số</th>
                             <th>Vị trí</th>
-                            <th>Pin/Nhiên liệu</th>
                             <th>Giá</th>
                             <th>Trạng thái</th>
                             <th>Hành động</th>
@@ -96,9 +95,7 @@
                         <tr>
                             <td><strong>{{ vehicle.vehicle_code }}</strong></td>
                             <td>
-                                {% if vehicle.vehicle_type == 'bike' %}
-                                <i class="fas fa-bicycle text-info"></i> Xe đạp
-                                {% elif vehicle.vehicle_type == 'motorbike' %}
+                                {% if vehicle.vehicle_type == 'motorbike' %}
                                 <i class="fas fa-motorcycle text-primary"></i> Xe máy
                                 {% elif vehicle.vehicle_type == 'car' %}
                                 <i class="fas fa-car text-success"></i> Ô tô
@@ -115,18 +112,6 @@
                                 <small>
                                     {{ "%.6f"|format(vehicle.latitude) }}, {{ "%.6f"|format(vehicle.longitude) }}
                                 </small>
-                            </td>
-                            <td>
-                                {% if vehicle.battery_level %}
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar {% if vehicle.battery_level > 50 %}bg-success{% elif vehicle.battery_level > 20 %}bg-warning{% else %}bg-danger{% endif %}" 
-                                         style="width: {{ vehicle.battery_level }}%">
-                                        {{ "%.0f"|format(vehicle.battery_level) }}%
-                                    </div>
-                                </div>
-                                {% else %}
-                                -
-                                {% endif %}
                             </td>
                             <td><strong>{{ "{:,.0f}".format(vehicle.price_per_minute) }}</strong> VND/phút</td>
                             <td>
