@@ -1,320 +1,315 @@
-{% extends "base.html" %}
-
-{% block title %}IoT Real-time Monitor - SmartRent{% endblock %}
-
-{% block extra_css %}
+{% extends "base.html" %} {% block title %}IoT Real-time Monitor - SmartRent{%
+endblock %} {% block extra_css %}
 <style>
-    #iot-map {
-        height: 600px;
-        width: 100%;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  #iot-map {
+    height: 600px;
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+  .vehicle-marker {
+    font-size: 24px;
+  }
+  .stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+  }
+  .stats-card h3 {
+    font-size: 2.5rem;
+    margin: 0;
+  }
+  .stats-card p {
+    margin: 0;
+    opacity: 0.9;
+  }
+  .vehicle-list {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .vehicle-item {
+    padding: 12px;
+    border-left: 4px solid #ccc;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .vehicle-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  .vehicle-item.available {
+    border-left-color: #28a745;
+  }
+  .vehicle-item.in_use {
+    border-left-color: #dc3545;
+  }
+  .vehicle-item.reserved {
+    border-left-color: #ffc107;
+  }
+  .vehicle-item.maintenance {
+    border-left-color: #6c757d;
+  }
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+  }
+  .alert-box {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10000;
+    max-width: 350px;
+  }
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% {
+      opacity: 1;
     }
-    .vehicle-marker {
-        font-size: 24px;
+    50% {
+      opacity: 0.6;
     }
-    .stats-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 15px;
+    100% {
+      opacity: 1;
     }
-    .stats-card h3 {
-        font-size: 2.5rem;
-        margin: 0;
-    }
-    .stats-card p {
-        margin: 0;
-        opacity: 0.9;
-    }
-    .vehicle-list {
-        max-height: 500px;
-        overflow-y: auto;
-    }
-    .vehicle-item {
-        padding: 12px;
-        border-left: 4px solid #ccc;
-        margin-bottom: 10px;
-        background: #f8f9fa;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    .vehicle-item:hover {
-        transform: translateX(5px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .vehicle-item.available {
-        border-left-color: #28a745;
-    }
-    .vehicle-item.in_use {
-        border-left-color: #dc3545;
-    }
-    .vehicle-item.reserved {
-        border-left-color: #ffc107;
-    }
-    .vehicle-item.maintenance {
-        border-left-color: #6c757d;
-    }
-    .status-badge {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-        border-radius: 12px;
-    }
-    .alert-box {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 10000;
-        max-width: 350px;
-    }
-    .pulse {
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.6; }
-        100% { opacity: 1; }
-    }
+  }
 </style>
-{% endblock %}
-
-{% block content %}
+{% endblock %} {% block content %}
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2><i class="fas fa-satellite-dish pulse"></i> IoT Real-time Monitor</h2>
-            <p class="text-muted">Theo dõi tất cả phương tiện real-time</p>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2><i class="fas fa-satellite-dish pulse"></i> IoT Real-time Monitor</h2>
+      <p class="text-muted">Theo dõi tất cả phương tiện real-time</p>
+    </div>
+    <div>
+      <span class="badge bg-success me-2">
+        <i class="fas fa-circle"></i> Connected
+      </span>
+      <small class="text-muted"
+        >Last update: <span id="last-update">-</span></small
+      >
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="stats-card">
+        <h3 id="total-vehicles">{{ vehicles|length }}</h3>
+        <p><i class="fas fa-car"></i> Tổng xe</p>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div
+        class="stats-card"
+        style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%)"
+      >
+        <h3 id="available-count">0</h3>
+        <p><i class="fas fa-check-circle"></i> Xe khả dụng</p>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div
+        class="stats-card"
+        style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%)"
+      >
+        <h3 id="in-use-count">0</h3>
+        <p><i class="fas fa-road"></i> Đang sử dụng</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Map -->
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-body p-0">
+          <div id="iot-map"></div>
         </div>
-        <div>
-            <span class="badge bg-success me-2">
-                <i class="fas fa-circle"></i> Connected
-            </span>
-            <small class="text-muted">Last update: <span id="last-update">-</span></small>
-        </div>
+      </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="stats-card">
-                <h3 id="total-vehicles">{{ vehicles|length }}</h3>
-                <p><i class="fas fa-car"></i> Tổng xe</p>
-            </div>
+    <!-- Vehicle List -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-list"></i> Danh sách xe
+          <span class="badge bg-light text-dark float-end" id="vehicle-count"
+            >{{ vehicles|length }}</span
+          >
         </div>
-        <div class="col-md-3">
-            <div class="stats-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                <h3 id="available-count">0</h3>
-                <p><i class="fas fa-check-circle"></i> Xe khả dụng</p>
-            </div>
+        <div class="card-body p-2 vehicle-list" id="vehicle-list">
+          <!-- Will be populated by JavaScript -->
         </div>
-        <div class="col-md-3">
-            <div class="stats-card" style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);">
-                <h3 id="in-use-count">0</h3>
-                <p><i class="fas fa-road"></i> Đang sử dụng</p>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <h3 id="low-battery-count">0</h3>
-                <p><i class="fas fa-battery-quarter"></i> Pin thấp (<30%)</p>
-            </div>
-        </div>
+      </div>
     </div>
-
-    <div class="row">
-        <!-- Map -->
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-body p-0">
-                    <div id="iot-map"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Vehicle List -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <i class="fas fa-list"></i> Danh sách xe
-                    <span class="badge bg-light text-dark float-end" id="vehicle-count">{{ vehicles|length }}</span>
-                </div>
-                <div class="card-body p-2 vehicle-list" id="vehicle-list">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
 
 <!-- Alert Container -->
 <div id="alert-container" class="alert-box"></div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script>
-let map, markers = {};
-let vehicles = {{ vehicles|tojson }};
+  let map, markers = {};
+  let vehicles = {{ vehicles|tojson }};
 
-// Initialize map
-function initMap() {
-    map = L.map('iot-map').setView([10.8231, 106.6297], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 18
-    }).addTo(map);
-}
+  // Initialize map
+  function initMap() {
+      map = L.map('iot-map').setView([10.8231, 106.6297], 13);
 
-// Get vehicle icon
-function getVehicleIcon(vehicle) {
-    let icon = '🚲';
-    if (vehicle.vehicle_type === 'motorbike') icon = '🛵';
-    else if (vehicle.vehicle_type === 'car') icon = '🚗';
-    
-    let color = '#28a745'; // available
-    if (vehicle.status === 'in_use') color = '#dc3545';
-    else if (vehicle.status === 'reserved') color = '#ffc107';
-    else if (vehicle.status === 'maintenance') color = '#6c757d';
-    
-    return L.divIcon({
-        html: `<div style="font-size: 28px; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));">${icon}</div>`,
-        className: 'vehicle-marker',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-    });
-}
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 18
+      }).addTo(map);
+  }
 
-// Update vehicle on map
-function updateVehicleMarker(vehicle) {
-    const latlng = [vehicle.latitude, vehicle.longitude];
-    
-    if (markers[vehicle.id]) {
-        markers[vehicle.id].setLatLng(latlng);
-        markers[vehicle.id].setIcon(getVehicleIcon(vehicle));
-    } else {
-        const marker = L.marker(latlng, { icon: getVehicleIcon(vehicle) })
-            .addTo(map)
-            .bindPopup(`
-                <b>${vehicle.brand} ${vehicle.model}</b><br>
-                Loại: ${vehicle.vehicle_type}<br>
-                Biển số: ${vehicle.license_plate}<br>
-                Trạng thái: <span class="badge bg-${vehicle.status === 'available' ? 'success' : 'danger'}">${vehicle.status}</span><br>
-                Pin: ${vehicle.battery_level || 0}%<br>
-                Nhiên liệu: ${vehicle.fuel_level || 0}%
-            `);
-        markers[vehicle.id] = marker;
-    }
-}
+  // Get vehicle icon
+  function getVehicleIcon(vehicle) {
+      let icon = '🚲';
+      if (vehicle.vehicle_type === 'motorbike') icon = '🛵';
+      else if (vehicle.vehicle_type === 'car') icon = '🚗';
 
-// Update vehicle list
-function updateVehicleList() {
-    const listEl = document.getElementById('vehicle-list');
-    const statusLabels = {
-        'available': 'Khả dụng',
-        'in_use': 'Đang dùng',
-        'reserved': 'Đã đặt',
-        'maintenance': 'Bảo trì'
-    };
-    const statusColors = {
-        'available': 'success',
-        'in_use': 'danger',
-        'reserved': 'warning',
-        'maintenance': 'secondary'
-    };
-    
-    listEl.innerHTML = vehicles.map(v => `
-        <div class="vehicle-item ${v.status}" onclick="focusVehicle(${v.id})">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>${v.brand} ${v.model}</strong>
-                    <br>
-                    <small class="text-muted">${v.license_plate}</small>
-                </div>
-                <span class="status-badge badge bg-${statusColors[v.status]}">${statusLabels[v.status]}</span>
-            </div>
-            <div class="mt-2">
-                <small>
-                    <i class="fas fa-battery-${v.battery_level > 70 ? 'full' : v.battery_level > 30 ? 'half' : 'quarter'}"></i> ${v.battery_level || 0}%
-                    <i class="fas fa-gas-pump ms-2"></i> ${v.fuel_level || 0}%
-                </small>
-            </div>
-        </div>
-    `).join('');
-}
+      let color = '#28a745'; // available
+      if (vehicle.status === 'in_use') color = '#dc3545';
+      else if (vehicle.status === 'reserved') color = '#ffc107';
+      else if (vehicle.status === 'maintenance') color = '#6c757d';
 
-// Update stats
-function updateStats() {
-    document.getElementById('available-count').textContent = 
-        vehicles.filter(v => v.status === 'available').length;
-    document.getElementById('in-use-count').textContent = 
-        vehicles.filter(v => v.status === 'in_use').length;
-    document.getElementById('low-battery-count').textContent = 
-        vehicles.filter(v => (v.battery_level || 100) < 30).length;
-}
+      return L.divIcon({
+          html: `<div style="font-size: 28px; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));">${icon}</div>`,
+          className: 'vehicle-marker',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+      });
+  }
 
-// Focus on vehicle
-function focusVehicle(vehicleId) {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    if (vehicle && markers[vehicle.id]) {
-        map.setView([vehicle.latitude, vehicle.longitude], 16);
-        markers[vehicle.id].openPopup();
-    }
-}
+  // Update vehicle on map
+  function updateVehicleMarker(vehicle) {
+      const latlng = [vehicle.latitude, vehicle.longitude];
 
-// Show alert
-function showAlert(message, type = 'info') {
-    const alertEl = document.createElement('div');
-    alertEl.className = `alert alert-${type} alert-dismissible fade show`;
-    alertEl.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.getElementById('alert-container').appendChild(alertEl);
-    
-    setTimeout(() => alertEl.remove(), 5000);
-}
+      if (markers[vehicle.id]) {
+          markers[vehicle.id].setLatLng(latlng);
+          markers[vehicle.id].setIcon(getVehicleIcon(vehicle));
+      } else {
+          const marker = L.marker(latlng, { icon: getVehicleIcon(vehicle) })
+              .addTo(map)
+              .bindPopup(`
+                  <b>${vehicle.brand} ${vehicle.model}</b><br>
+                  Loại: ${vehicle.vehicle_type}<br>
+                  Biển số: ${vehicle.license_plate}<br>
+                  Trạng thái: <span class="badge bg-${vehicle.status === 'available' ? 'success' : 'danger'}">${vehicle.status}</span>
+              `);
+          markers[vehicle.id] = marker;
+      }
+  }
 
-// Initialize WebSocket
-const socket = io('/iot');
+  // Update vehicle list
+  function updateVehicleList() {
+      const listEl = document.getElementById('vehicle-list');
+      const statusLabels = {
+          'available': 'Khả dụng',
+          'in_use': 'Đang dùng',
+          'reserved': 'Đã đặt',
+          'maintenance': 'Bảo trì'
+      };
+      const statusColors = {
+          'available': 'success',
+          'in_use': 'danger',
+          'reserved': 'warning',
+          'maintenance': 'secondary'
+      };
 
-socket.on('connect', () => {
-    console.log('Connected to IoT WebSocket');
-});
+      listEl.innerHTML = vehicles.map(v => `
+          <div class="vehicle-item ${v.status}" onclick="focusVehicle(${v.id})">
+              <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                      <strong>${v.brand} ${v.model}</strong>
+                      <br>
+                      <small class="text-muted">${v.license_plate}</small>
+                  </div>
+                  <span class="status-badge badge bg-${statusColors[v.status]}">${statusLabels[v.status]}</span>
+              </div>
+          </div>
+      `).join('');
+  }
 
-socket.on('vehicle_update', (data) => {
-    const vehicle = data.vehicle;
-    const index = vehicles.findIndex(v => v.id === vehicle.id);
-    
-    if (index !== -1) {
-        vehicles[index] = vehicle;
-    } else {
-        vehicles.push(vehicle);
-    }
-    
-    updateVehicleMarker(vehicle);
-    updateVehicleList();
-    updateStats();
-    
-    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-});
+  // Update stats
+  function updateStats() {
+      document.getElementById('available-count').textContent =
+          vehicles.filter(v => v.status === 'available').length;
+      document.getElementById('in-use-count').textContent =
+          vehicles.filter(v => v.status === 'in_use').length;
+      document.getElementById('low-battery-count').textContent =
+          vehicles.filter(v => (v.battery_level || 100) < 30).length;
+  }
 
-socket.on('battery_alert', (data) => {
-    showAlert(`⚠️ <strong>${data.vehicle_name}</strong> pin thấp: ${data.battery_level}%`, 'warning');
-});
+  // Focus on vehicle
+  function focusVehicle(vehicleId) {
+      const vehicle = vehicles.find(v => v.id === vehicleId);
+      if (vehicle && markers[vehicle.id]) {
+          map.setView([vehicle.latitude, vehicle.longitude], 16);
+          markers[vehicle.id].openPopup();
+      }
+  }
 
-socket.on('disconnect', () => {
-    console.log('Disconnected from IoT WebSocket');
-});
+  // Show alert
+  function showAlert(message, type = 'info') {
+      const alertEl = document.createElement('div');
+      alertEl.className = `alert alert-${type} alert-dismissible fade show`;
+      alertEl.innerHTML = `
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      document.getElementById('alert-container').appendChild(alertEl);
 
-// Initialize on load
-document.addEventListener('DOMContentLoaded', () => {
-    initMap();
-    vehicles.forEach(updateVehicleMarker);
-    updateVehicleList();
-    updateStats();
-});
+      setTimeout(() => alertEl.remove(), 5000);
+  }
+
+  // Initialize WebSocket
+  const socket = io('/iot');
+
+  socket.on('connect', () => {
+      console.log('Connected to IoT WebSocket');
+  });
+
+  socket.on('vehicle_update', (data) => {
+      const vehicle = data.vehicle;
+      const index = vehicles.findIndex(v => v.id === vehicle.id);
+
+      if (index !== -1) {
+          vehicles[index] = vehicle;
+      } else {
+          vehicles.push(vehicle);
+      }
+
+      updateVehicleMarker(vehicle);
+      updateVehicleList();
+      updateStats();
+
+      document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+  });
+
+  socket.on('battery_alert', (data) => {
+      showAlert(`⚠️ <strong>${data.vehicle_name}</strong> pin thấp: ${data.battery_level}%`, 'warning');
+  });
+
+  socket.on('disconnect', () => {
+      console.log('Disconnected from IoT WebSocket');
+  });
+
+  // Initialize on load
+  document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      vehicles.forEach(updateVehicleMarker);
+      updateVehicleList();
+      updateStats();
+  });
 </script>
 {% endblock %}
