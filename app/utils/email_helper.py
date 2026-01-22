@@ -9,7 +9,7 @@ import secrets
 
 mail = Mail()
 
-# In-memory OTP storage (for demo - use Redis in production)
+## In-memory OTP storage (for demo - use Redis in production)
 otp_storage = {}
 
 def generate_otp(trip_id, email, pin):
