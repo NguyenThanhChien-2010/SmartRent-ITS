@@ -1,380 +1,424 @@
-{% extends 'base.html' %}
-
-{% block title %}Lập kế hoạch hành trình - SmartRent{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+{% extends 'base.html' %} {% block title %}Lập kế hoạch hành trình - SmartRent{%
+endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+/>
 <style>
-    .hazard-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.7);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-    }
-    
-    .hazard-modal.show {
-        display: flex;
-    }
-    
-    .hazard-modal-content {
-        background: white;
-        border-radius: 12px;
-        padding: 30px;
-        max-width: 600px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    }
-    
-    .hazard-item {
-        border-left: 4px solid;
-        padding: 15px;
-        margin-bottom: 15px;
-        border-radius: 4px;
-        background: #f8f9fa;
-    }
-    
-    .hazard-critical { border-color: #f44336; background: #ffebee; }
-    .hazard-high { border-color: #ff5722; background: #fbe9e7; }
-    .hazard-medium { border-color: #ff9800; background: #fff3e0; }
-    .hazard-low { border-color: #ffc107; background: #fff8e1; }
+  .hazard-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  .hazard-modal.show {
+    display: flex;
+  }
+
+  .hazard-modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .hazard-item {
+    border-left: 4px solid;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    background: #f8f9fa;
+  }
+
+  .hazard-critical {
+    border-color: #f44336;
+    background: #ffebee;
+  }
+  .hazard-high {
+    border-color: #ff5722;
+    background: #fbe9e7;
+  }
+  .hazard-medium {
+    border-color: #ff9800;
+    background: #fff3e0;
+  }
+  .hazard-low {
+    border-color: #ffc107;
+    background: #fff8e1;
+  }
 </style>
-{% endblock %}
-
-{% block content %}
+{% endblock %} {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0"><i class="fas fa-route"></i> Lập kế hoạch hành trình</h4>
-                </div>
-                <div class="card-body">
-                    <form id="planTripForm">
-                        <div class="mb-3">
-                            <label for="startLocation" class="form-label">
-                                <i class="fas fa-map-marker-alt text-success"></i> Điểm xuất phát
-                            </label>
-                            <input type="text" class="form-control" id="startLocation" placeholder="Nhập địa chỉ xuất phát" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="endLocation" class="form-label">
-                                <i class="fas fa-map-marker-alt text-danger"></i> Điểm đến
-                            </label>
-                            <input type="text" class="form-control" id="endLocation" placeholder="Nhập địa chỉ đến" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="vehicleType" class="form-label">
-                                <i class="fas fa-car"></i> Loại phương tiện
-                            </label>
-                            <select class="form-select" id="vehicleType">
-                                <option value="all">Tất cả</option>
-                                <option value="bike">Xe đạp</option>
-                                <option value="motorbike">Xe máy</option>
-                                <option value="car">Ô tô</option>
-                            </select>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-search"></i> Tìm lộ trình
-                        </button>
-                    </form>
-
-                    <!-- Results -->
-                    <div id="routeResults" class="mt-4 d-none">
-                        <hr>
-                        <h5><i class="fas fa-info-circle"></i> Thông tin lộ trình</h5>
-                        
-                        <div class="row mb-3">
-                            <div class="col-6">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <h6 class="text-muted">Khoảng cách</h6>
-                                        <h4 id="routeDistance">-</h4>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <h6 class="text-muted">Thời gian</h6>
-                                        <h4 id="routeDuration">-</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Warnings -->
-                        <div id="routeWarnings" class="d-none">
-                            <h6><i class="fas fa-exclamation-triangle text-warning"></i> Cảnh báo</h6>
-                            <div id="warningsList"></div>
-                        </div>
-
-                        <!-- Map -->
-                        <div id="routeMap" style="height: 400px; border-radius: 8px;" class="mt-3"></div>
-
-                        <!-- Available Vehicles -->
-                        <div class="mt-3">
-                            <h6><i class="fas fa-car"></i> Xe khả dụng gần điểm xuất phát</h6>
-                            <div id="nearbyVehicles"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div class="row">
+    <div class="col-md-8 mx-auto">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <i class="fas fa-route"></i> Lập kế hoạch hành trình
+          </h4>
         </div>
+        <div class="card-body">
+          <form id="planTripForm">
+            <div class="mb-3">
+              <label for="startLocation" class="form-label">
+                <i class="fas fa-map-marker-alt text-success"></i> Điểm xuất
+                phát
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="startLocation"
+                placeholder="Nhập địa chỉ xuất phát"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="endLocation" class="form-label">
+                <i class="fas fa-map-marker-alt text-danger"></i> Điểm đến
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="endLocation"
+                placeholder="Nhập địa chỉ đến"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="vehicleType" class="form-label">
+                <i class="fas fa-car"></i> Loại phương tiện
+              </label>
+              <select class="form-select" id="vehicleType">
+                <option value="all">Tất cả</option>
+                <option value="motorbike">Xe máy</option>
+                <option value="car">Ô tô</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fas fa-search"></i> Tìm lộ trình
+            </button>
+          </form>
+
+          <!-- Results -->
+          <div id="routeResults" class="mt-4 d-none">
+            <hr />
+            <h5><i class="fas fa-info-circle"></i> Thông tin lộ trình</h5>
+
+            <div class="row mb-3">
+              <div class="col-6">
+                <div class="card bg-light">
+                  <div class="card-body text-center">
+                    <h6 class="text-muted">Khoảng cách</h6>
+                    <h4 id="routeDistance">-</h4>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="card bg-light">
+                  <div class="card-body text-center">
+                    <h6 class="text-muted">Thời gian</h6>
+                    <h4 id="routeDuration">-</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Warnings -->
+            <div id="routeWarnings" class="d-none">
+              <h6>
+                <i class="fas fa-exclamation-triangle text-warning"></i> Cảnh
+                báo
+              </h6>
+              <div id="warningsList"></div>
+            </div>
+
+            <!-- Map -->
+            <div
+              id="routeMap"
+              style="height: 400px; border-radius: 8px"
+              class="mt-3"
+            ></div>
+
+            <!-- Available Vehicles -->
+            <div class="mt-3">
+              <h6><i class="fas fa-car"></i> Xe khả dụng gần điểm xuất phát</h6>
+              <div id="nearbyVehicles"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Hazard Warning Modal -->
 <div id="hazardModal" class="hazard-modal">
-    <div class="hazard-modal-content">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">
-                <i class="fas fa-exclamation-triangle text-warning"></i> 
-                Cảnh báo Vùng Nguy hiểm
-            </h4>
-            <button class="btn btn-sm btn-outline-secondary" onclick="closeHazardModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div id="hazardsList"></div>
-        
-        <div class="mt-3 text-center">
-            <button class="btn btn-warning" onclick="closeHazardModal()">
-                <i class="fas fa-check"></i> Tôi đã hiểu
-            </button>
-            <button class="btn btn-outline-primary" onclick="closeHazardModal()">
-                <i class="fas fa-route"></i> Tìm đường khác
-            </button>
-        </div>
+  <div class="hazard-modal-content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="mb-0">
+        <i class="fas fa-exclamation-triangle text-warning"></i>
+        Cảnh báo Vùng Nguy hiểm
+      </h4>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        onclick="closeHazardModal()"
+      >
+        <i class="fas fa-times"></i>
+      </button>
     </div>
+
+    <div id="hazardsList"></div>
+
+    <div class="mt-3 text-center">
+      <button class="btn btn-warning" onclick="closeHazardModal()">
+        <i class="fas fa-check"></i> Tôi đã hiểu
+      </button>
+      <button class="btn btn-outline-primary" onclick="closeHazardModal()">
+        <i class="fas fa-route"></i> Tìm đường khác
+      </button>
+    </div>
+  </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script>
-    let map;
-    let routeLayer;
-    let hazardZones = [];
-    let currentRoutePoints = [];
+  let map;
+  let routeLayer;
+  let hazardZones = [];
+  let currentRoutePoints = [];
 
-    document.getElementById('planTripForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const startLocation = document.getElementById('startLocation').value;
-        const endLocation = document.getElementById('endLocation').value;
-        const vehicleType = document.getElementById('vehicleType').value;
-        
-        if (!startLocation || !endLocation) {
-            alert('Vui lòng nhập đầy đủ điểm xuất phát và điểm đến');
-            return;
-        }
-        
-        // Show loading
-        document.getElementById('routeResults').classList.remove('d-none');
-        document.getElementById('routeDistance').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang tính...';
-        document.getElementById('routeDuration').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang tính...';
-        
-        // Geocode addresses and get route
-        geocodeAndPlanRoute(startLocation, endLocation, vehicleType);
+  document
+    .getElementById("planTripForm")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const startLocation = document.getElementById("startLocation").value;
+      const endLocation = document.getElementById("endLocation").value;
+      const vehicleType = document.getElementById("vehicleType").value;
+
+      if (!startLocation || !endLocation) {
+        alert("Vui lòng nhập đầy đủ điểm xuất phát và điểm đến");
+        return;
+      }
+
+      // Show loading
+      document.getElementById("routeResults").classList.remove("d-none");
+      document.getElementById("routeDistance").innerHTML =
+        '<span class="spinner-border spinner-border-sm"></span> Đang tính...';
+      document.getElementById("routeDuration").innerHTML =
+        '<span class="spinner-border spinner-border-sm"></span> Đang tính...';
+
+      // Geocode addresses and get route
+      geocodeAndPlanRoute(startLocation, endLocation, vehicleType);
     });
-    
-    async function geocodeAndPlanRoute(startAddr, endAddr, vehicleType) {
-        try {
-            console.log('🔍 Geocoding addresses...');
-            
-            // Geocode start address
-            const startCoords = await geocodeAddress(startAddr);
-            if (!startCoords) {
-                alert('Không tìm thấy địa chỉ xuất phát: ' + startAddr);
-                return;
-            }
-            
-            // Geocode end address
-            const endCoords = await geocodeAddress(endAddr);
-            if (!endCoords) {
-                alert('Không tìm thấy địa chỉ đến: ' + endAddr);
-                return;
-            }
-            
-            console.log(`📍 Start: ${startCoords.lat}, ${startCoords.lng}`);
-            console.log(`📍 End: ${endCoords.lat}, ${endCoords.lng}`);
-            
-            // Call backend API to get optimized route
-            const response = await fetch('/trips/api/optimize-route', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    start_lat: startCoords.lat,
-                    start_lng: startCoords.lng,
-                    end_lat: endCoords.lat,
-                    end_lng: endCoords.lng,
-                    start_address: startAddr,  // For analytics
-                    end_address: endAddr       // For analytics
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error('API error: ' + response.status);
-            }
-            
-            const routeData = await response.json();
-            console.log('✅ Route data:', routeData);
-            
-            // Convert path to route_points format
-            const route = {
-                distance_km: routeData.distance_km,
-                duration_minutes: routeData.estimated_time_minutes,
-                route_points: routeData.path.map(p => [p.lat, p.lng]),
-                warnings: []
-            };
-            
-            currentRoutePoints = route.route_points;
-            displayRoute(route);
-            showNearbyVehicles(vehicleType);
-            
-            // Check for hazards
-            checkRouteHazards(route.route_points);
-            
-        } catch (error) {
-            console.error('❌ Error planning route:', error);
-            alert('Lỗi khi tính toán lộ trình. Vui lòng thử lại.');
-            document.getElementById('routeDistance').textContent = '--';
-            document.getElementById('routeDuration').textContent = '--';
-        }
+
+  async function geocodeAndPlanRoute(startAddr, endAddr, vehicleType) {
+    try {
+      console.log("🔍 Geocoding addresses...");
+
+      // Geocode start address
+      const startCoords = await geocodeAddress(startAddr);
+      if (!startCoords) {
+        alert("Không tìm thấy địa chỉ xuất phát: " + startAddr);
+        return;
+      }
+
+      // Geocode end address
+      const endCoords = await geocodeAddress(endAddr);
+      if (!endCoords) {
+        alert("Không tìm thấy địa chỉ đến: " + endAddr);
+        return;
+      }
+
+      console.log(`📍 Start: ${startCoords.lat}, ${startCoords.lng}`);
+      console.log(`📍 End: ${endCoords.lat}, ${endCoords.lng}`);
+
+      // Call backend API to get optimized route
+      const response = await fetch("/trips/api/optimize-route", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          start_lat: startCoords.lat,
+          start_lng: startCoords.lng,
+          end_lat: endCoords.lat,
+          end_lng: endCoords.lng,
+          start_address: startAddr, // For analytics
+          end_address: endAddr, // For analytics
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("API error: " + response.status);
+      }
+
+      const routeData = await response.json();
+      console.log("✅ Route data:", routeData);
+
+      // Convert path to route_points format
+      const route = {
+        distance_km: routeData.distance_km,
+        duration_minutes: routeData.estimated_time_minutes,
+        route_points: routeData.path.map((p) => [p.lat, p.lng]),
+        warnings: [],
+      };
+
+      currentRoutePoints = route.route_points;
+      displayRoute(route);
+      showNearbyVehicles(vehicleType);
+
+      // Check for hazards
+      checkRouteHazards(route.route_points);
+    } catch (error) {
+      console.error("❌ Error planning route:", error);
+      alert("Lỗi khi tính toán lộ trình. Vui lòng thử lại.");
+      document.getElementById("routeDistance").textContent = "--";
+      document.getElementById("routeDuration").textContent = "--";
     }
-    
-    async function geocodeAddress(address) {
-        try {
-            // Use Nominatim API for geocoding (free)
-            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
-            
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'SmartRent-ITS/1.0'
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.length === 0) {
-                return null;
-            }
-            
-            return {
-                lat: parseFloat(data[0].lat),
-                lng: parseFloat(data[0].lon)
-            };
-        } catch (error) {
-            console.error('Geocoding error:', error);
-            return null;
-        }
+  }
+
+  async function geocodeAddress(address) {
+    try {
+      // Use Nominatim API for geocoding (free)
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "SmartRent-ITS/1.0",
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.length === 0) {
+        return null;
+      }
+
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+      };
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      return null;
     }
-    
-    function displayRoute(route) {
-        document.getElementById('routeDistance').textContent = route.distance_km + ' km';
-        document.getElementById('routeDuration').textContent = route.duration_minutes + ' phút';
-        
-        // Show warnings
-        if (route.warnings && route.warnings.length > 0) {
-            document.getElementById('routeWarnings').classList.remove('d-none');
-            const warningsList = document.getElementById('warningsList');
-            warningsList.innerHTML = '';
-            
-            route.warnings.forEach(warning => {
-                const alertClass = warning.type === 'traffic' ? 'alert-warning' : 'alert-info';
-                const icon = warning.type === 'traffic' ? 'fa-traffic-light' : 'fa-ban';
-                warningsList.innerHTML += `
+  }
+
+  function displayRoute(route) {
+    document.getElementById("routeDistance").textContent =
+      route.distance_km + " km";
+    document.getElementById("routeDuration").textContent =
+      route.duration_minutes + " phút";
+
+    // Show warnings
+    if (route.warnings && route.warnings.length > 0) {
+      document.getElementById("routeWarnings").classList.remove("d-none");
+      const warningsList = document.getElementById("warningsList");
+      warningsList.innerHTML = "";
+
+      route.warnings.forEach((warning) => {
+        const alertClass =
+          warning.type === "traffic" ? "alert-warning" : "alert-info";
+        const icon = warning.type === "traffic" ? "fa-traffic-light" : "fa-ban";
+        warningsList.innerHTML += `
                     <div class="alert ${alertClass} small mb-2">
                         <i class="fas ${icon}"></i> ${warning.message}
                     </div>
                 `;
-            });
-        }
-        
-        // Initialize map if not exists
-        if (!map) {
-            map = L.map('routeMap').setView([10.762622, 106.660172], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-            
-            // Load hazard zones
-            loadHazardZones();
-        }
-        
-        // Draw route using actual points
-        const routePoints = route.route_points || [[10.762622, 106.660172], [10.782622, 106.680172]];
-        
-        if (routeLayer) {
-            map.removeLayer(routeLayer);
-        }
-        
-        routeLayer = L.polyline(routePoints, {
-            color: 'blue',
-            weight: 4,
-            opacity: 0.7
-        }).addTo(map);
-        
-        // Clear old markers
-        if (window.startMarker) map.removeLayer(window.startMarker);
-        if (window.endMarker) map.removeLayer(window.endMarker);
-        
-        // Create custom icons
-        const startIcon = L.divIcon({
-            html: '<div style="background-color: #28a745; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><i class="fas fa-play" style="color: white; font-size: 12px; margin-left: 2px;"></i></div>',
-            className: 'custom-start-marker',
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
-        });
-        
-        const endIcon = L.divIcon({
-            html: '<div style="background-color: #dc3545; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><i class="fas fa-flag-checkered" style="color: white; font-size: 12px;"></i></div>',
-            className: 'custom-end-marker',
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
-        });
-        
-        // Add markers with custom icons
-        window.startMarker = L.marker(routePoints[0], {icon: startIcon})
-            .addTo(map)
-            .bindPopup('<strong style="color: #28a745;">🚀 Điểm xuất phát</strong>');
-            
-        window.endMarker = L.marker(routePoints[routePoints.length - 1], {icon: endIcon})
-            .addTo(map)
-            .bindPopup('<strong style="color: #dc3545;">🏁 Điểm đến</strong>');
-        
-        map.fitBounds(routePoints, {padding: [50, 50]});
+      });
     }
-    
-    function showNearbyVehicles(vehicleType) {
-        const container = document.getElementById('nearbyVehicles');
-        container.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Đang tìm xe...';
-        
-        // Demo vehicles
-        setTimeout(function() {
-            container.innerHTML = `
+
+    // Initialize map if not exists
+    if (!map) {
+      map = L.map("routeMap").setView([10.762622, 106.660172], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+
+      // Load hazard zones
+      loadHazardZones();
+    }
+
+    // Draw route using actual points
+    const routePoints = route.route_points || [
+      [10.762622, 106.660172],
+      [10.782622, 106.680172],
+    ];
+
+    if (routeLayer) {
+      map.removeLayer(routeLayer);
+    }
+
+    routeLayer = L.polyline(routePoints, {
+      color: "blue",
+      weight: 4,
+      opacity: 0.7,
+    }).addTo(map);
+
+    // Clear old markers
+    if (window.startMarker) map.removeLayer(window.startMarker);
+    if (window.endMarker) map.removeLayer(window.endMarker);
+
+    // Create custom icons
+    const startIcon = L.divIcon({
+      html: '<div style="background-color: #28a745; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><i class="fas fa-play" style="color: white; font-size: 12px; margin-left: 2px;"></i></div>',
+      className: "custom-start-marker",
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    const endIcon = L.divIcon({
+      html: '<div style="background-color: #dc3545; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><i class="fas fa-flag-checkered" style="color: white; font-size: 12px;"></i></div>',
+      className: "custom-end-marker",
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    // Add markers with custom icons
+    window.startMarker = L.marker(routePoints[0], { icon: startIcon })
+      .addTo(map)
+      .bindPopup('<strong style="color: #28a745;">🚀 Điểm xuất phát</strong>');
+
+    window.endMarker = L.marker(routePoints[routePoints.length - 1], {
+      icon: endIcon,
+    })
+      .addTo(map)
+      .bindPopup('<strong style="color: #dc3545;">🏁 Điểm đến</strong>');
+
+    map.fitBounds(routePoints, { padding: [50, 50] });
+  }
+
+  function showNearbyVehicles(vehicleType) {
+    const container = document.getElementById("nearbyVehicles");
+    container.innerHTML =
+      '<div class="spinner-border spinner-border-sm"></div> Đang tìm xe...';
+
+    // Demo vehicles
+    setTimeout(function () {
+      container.innerHTML = `
                 <div class="list-group">
                     <a href="#" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1"><i class="fas fa-bicycle text-success"></i> Honda Wave Alpha</h6>
+                            <h6 class="mb-1"><i class="fas fa-motorcycle text-success"></i> Honda Wave Alpha</h6>
                             <small class="text-muted">0.3 km</small>
                         </div>
-                        <p class="mb-1 small">Biển số: 51F-12345 • Pin: 95%</p>
+                        <p class="mb-1 small">Biển số: 51F-12345</p>
                         <small class="text-primary">500 VND/phút</small>
                     </a>
                     <a href="#" class="list-group-item list-group-item-action">
@@ -382,25 +426,25 @@
                             <h6 class="mb-1"><i class="fas fa-motorcycle text-info"></i> Yamaha Exciter</h6>
                             <small class="text-muted">0.5 km</small>
                         </div>
-                        <p class="mb-1 small">Biển số: 51H-67890 • Pin: 87%</p>
+                        <p class="mb-1 small">Biển số: 51H-67890</p>
                         <small class="text-primary">800 VND/phút</small>
                     </a>
                 </div>
             `;
-        }, 500);
-    }
-    
-    // ==========================================
-    // HAZARD ZONE FUNCTIONS (ITS Feature)
-    // ==========================================
-    
-    function loadHazardZones() {
-        // NOTE: Users don't have access to admin API
-        // Hazard zones will be checked on backend when user plans route
-        // No need to display zones on map for regular users
-        console.log('ℹ️ Hazard zones will be checked when you plan a route');
-        
-        /* DISABLED - Admin API access required
+    }, 500);
+  }
+
+  // ==========================================
+  // HAZARD ZONE FUNCTIONS (ITS Feature)
+  // ==========================================
+
+  function loadHazardZones() {
+    // NOTE: Users don't have access to admin API
+    // Hazard zones will be checked on backend when user plans route
+    // No need to display zones on map for regular users
+    console.log("ℹ️ Hazard zones will be checked when you plan a route");
+
+    /* DISABLED - Admin API access required
         fetch('/admin/api/hazard-zones')
             .then(response => response.json())
             .then(data => {
@@ -412,19 +456,19 @@
             })
             .catch(error => console.error('Error loading hazard zones:', error));
         */
-    }
-    
-    function displayHazardZonesOnMap(zones) {
-        zones.forEach(zone => {
-            const polygon = L.polygon(zone.polygon_coordinates, {
-                color: zone.color || '#ff0000',
-                fillColor: zone.color || '#ff0000',
-                fillOpacity: 0.2,
-                weight: 2,
-                className: 'hazard-zone-polygon'
-            }).addTo(map);
-            
-            polygon.bindPopup(`
+  }
+
+  function displayHazardZonesOnMap(zones) {
+    zones.forEach((zone) => {
+      const polygon = L.polygon(zone.polygon_coordinates, {
+        color: zone.color || "#ff0000",
+        fillColor: zone.color || "#ff0000",
+        fillOpacity: 0.2,
+        weight: 2,
+        className: "hazard-zone-polygon",
+      }).addTo(map);
+
+      polygon.bindPopup(`
                 <div class="text-center">
                     <strong class="text-danger">${zone.zone_name}</strong><br>
                     <span class="badge bg-${getSeverityBadgeClass(zone.severity)}">${zone.severity.toUpperCase()}</span><br>
@@ -432,62 +476,62 @@
                     <small>${zone.warning_message || zone.description}</small>
                 </div>
             `);
-        });
+    });
+  }
+
+  let currentStartPoint = null;
+  let currentEndPoint = null;
+  let alternativeRoutesData = null;
+
+  function checkRouteHazards(routePoints) {
+    console.log("🔍 Checking route for hazards...");
+
+    // Store start/end for alternative routes
+    if (routePoints.length >= 2) {
+      currentStartPoint = routePoints[0];
+      currentEndPoint = routePoints[routePoints.length - 1];
     }
-    
-    let currentStartPoint = null;
-    let currentEndPoint = null;
-    let alternativeRoutesData = null;
-    
-    function checkRouteHazards(routePoints) {
-        console.log('🔍 Checking route for hazards...');
-        
-        // Store start/end for alternative routes
-        if (routePoints.length >= 2) {
-            currentStartPoint = routePoints[0];
-            currentEndPoint = routePoints[routePoints.length - 1];
+
+    fetch("/trips/api/check-route-hazards", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        route_points: routePoints,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("📥 Hazard check result:", data);
+
+        if (data.success && data.has_hazards) {
+          showHazardWarning(data.hazards);
+          // Auto-fetch alternative routes
+          fetchAlternativeRoutes();
+        } else {
+          console.log("✅ No hazards detected on route");
         }
-        
-        fetch('/trips/api/check-route-hazards', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                route_points: routePoints
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('📥 Hazard check result:', data);
-            
-            if (data.success && data.has_hazards) {
-                showHazardWarning(data.hazards);
-                // Auto-fetch alternative routes
-                fetchAlternativeRoutes();
-            } else {
-                console.log('✅ No hazards detected on route');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error checking hazards:', error);
-        });
-    }
-    
-    function showHazardWarning(hazards) {
-        const hazardsList = document.getElementById('hazardsList');
-        hazardsList.innerHTML = '';
-        
-        hazardsList.innerHTML += `
+      })
+      .catch((error) => {
+        console.error("❌ Error checking hazards:", error);
+      });
+  }
+
+  function showHazardWarning(hazards) {
+    const hazardsList = document.getElementById("hazardsList");
+    hazardsList.innerHTML = "";
+
+    hazardsList.innerHTML += `
             <p class="text-muted mb-3">
                 <i class="fas fa-info-circle"></i> 
                 Tuyến đường của bạn đi qua <strong>${hazards.length}</strong> vùng nguy hiểm:
             </p>
         `;
-        
-        hazards.forEach(hazard => {
-            const severityClass = `hazard-${hazard.severity}`;
-            hazardsList.innerHTML += `
+
+    hazards.forEach((hazard) => {
+      const severityClass = `hazard-${hazard.severity}`;
+      hazardsList.innerHTML += `
                 <div class="hazard-item ${severityClass}">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h6 class="mb-0">
@@ -507,96 +551,96 @@
                     </p>
                 </div>
             `;
-        });
-        
-        // Add alternative routes button
-        hazardsList.innerHTML += `
+    });
+
+    // Add alternative routes button
+    hazardsList.innerHTML += `
             <div class="mt-3 p-3 bg-light rounded" id="alternativeRoutesSection">
                 <div class="text-center">
                     <i class="fas fa-spinner fa-spin"></i> Đang tính toán đường thay thế...
                 </div>
             </div>
         `;
-        
-        // Show modal
-        document.getElementById('hazardModal').classList.add('show');
+
+    // Show modal
+    document.getElementById("hazardModal").classList.add("show");
+  }
+
+  function closeHazardModal() {
+    document.getElementById("hazardModal").classList.remove("show");
+  }
+
+  function fetchAlternativeRoutes() {
+    if (!currentStartPoint || !currentEndPoint) {
+      console.error("Missing start/end points");
+      return;
     }
-    
-    function closeHazardModal() {
-        document.getElementById('hazardModal').classList.remove('show');
-    }
-    
-    function fetchAlternativeRoutes() {
-        if (!currentStartPoint || !currentEndPoint) {
-            console.error('Missing start/end points');
-            return;
+
+    console.log("🔄 Fetching alternative routes...");
+
+    fetch("/trips/api/alternative-routes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        start_lat: currentStartPoint[0],
+        start_lng: currentStartPoint[1],
+        end_lat: currentEndPoint[0],
+        end_lng: currentEndPoint[1],
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("📥 Alternative routes:", data);
+
+        if (data.success) {
+          alternativeRoutesData = data.routes;
+          displayAlternativeRoutes(data.routes, data.has_safe_alternative);
         }
-        
-        console.log('🔄 Fetching alternative routes...');
-        
-        fetch('/trips/api/alternative-routes', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                start_lat: currentStartPoint[0],
-                start_lng: currentStartPoint[1],
-                end_lat: currentEndPoint[0],
-                end_lng: currentEndPoint[1]
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('📥 Alternative routes:', data);
-            
-            if (data.success) {
-                alternativeRoutesData = data.routes;
-                displayAlternativeRoutes(data.routes, data.has_safe_alternative);
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error fetching alternative routes:', error);
-            document.getElementById('alternativeRoutesSection').innerHTML = `
+      })
+      .catch((error) => {
+        console.error("❌ Error fetching alternative routes:", error);
+        document.getElementById("alternativeRoutesSection").innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle"></i> 
                     Không thể tính đường thay thế
                 </div>
             `;
-        });
-    }
-    
-    function displayAlternativeRoutes(routes, hasSafe) {
-        const section = document.getElementById('alternativeRoutesSection');
-        
-        if (routes.length === 0) {
-            section.innerHTML = `
+      });
+  }
+
+  function displayAlternativeRoutes(routes, hasSafe) {
+    const section = document.getElementById("alternativeRoutesSection");
+
+    if (routes.length === 0) {
+      section.innerHTML = `
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i> 
                     Không tìm thấy đường thay thế
                 </div>
             `;
-            return;
-        }
-        
-        let html = `
+      return;
+    }
+
+    let html = `
             <h6 class="mb-3">
                 <i class="fas fa-map"></i> Đường thay thế 
-                ${hasSafe ? '<span class="badge bg-success">Có đường an toàn</span>' : ''}
+                ${hasSafe ? '<span class="badge bg-success">Có đường an toàn</span>' : ""}
             </h6>
         `;
-        
-        routes.forEach((route, index) => {
-            const riskBadge = getRiskBadge(route.risk_level);
-            const isRecommended = route.recommended;
-            
-            html += `
-                <div class="card mb-2 ${isRecommended ? 'border-success' : ''}">
+
+    routes.forEach((route, index) => {
+      const riskBadge = getRiskBadge(route.risk_level);
+      const isRecommended = route.recommended;
+
+      html += `
+                <div class="card mb-2 ${isRecommended ? "border-success" : ""}">
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <strong>${route.route_name}</strong>
-                                ${isRecommended ? '<span class="badge bg-success ms-2">Đề xuất</span>' : ''}
+                                ${isRecommended ? '<span class="badge bg-success ms-2">Đề xuất</span>' : ""}
                             </div>
                             ${riskBadge}
                         </div>
@@ -613,21 +657,25 @@
                             </div>
                         </div>
                         
-                        ${route.hazard_count > 0 ? `
+                        ${
+                          route.hazard_count > 0
+                            ? `
                             <div class="mt-2">
                                 <small class="text-danger">
                                     <i class="fas fa-exclamation-triangle"></i> 
                                     ${route.hazard_count} vùng nguy hiểm
                                 </small>
                             </div>
-                        ` : `
+                        `
+                            : `
                             <div class="mt-2">
                                 <small class="text-success">
                                     <i class="fas fa-check-circle"></i> 
                                     An toàn
                                 </small>
                             </div>
-                        `}
+                        `
+                        }
                         
                         <button class="btn btn-sm btn-outline-primary mt-2 w-100" 
                                 onclick="selectRoute(${index})">
@@ -636,73 +684,77 @@
                     </div>
                 </div>
             `;
-        });
-        
-        section.innerHTML = html;
-    }
-    
-    function getRiskBadge(riskLevel) {
-        const badges = {
-            'safe': '<span class="badge bg-success">An toàn</span>',
-            'low': '<span class="badge bg-info">Rủi ro thấp</span>',
-            'medium': '<span class="badge bg-warning">Rủi ro TB</span>',
-            'high': '<span class="badge bg-danger">Rủi ro cao</span>',
-            'critical': '<span class="badge bg-dark">Rất nguy hiểm</span>'
-        };
-        return badges[riskLevel] || badges['medium'];
-    }
-    
-    function selectRoute(routeIndex) {
-        const route = alternativeRoutesData[routeIndex];
-        console.log('✅ Selected route:', route);
-        
-        // Clear existing route layers
-        map.eachLayer(layer => {
-            if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-                map.removeLayer(layer);
-            }
-        });
-        
-        // Draw selected route on map
-        const routeCoords = route.path.map(p => [p.lat, p.lng]);
-        const routeLine = L.polyline(routeCoords, {
-            color: route.recommended ? '#28a745' : '#007bff',
-            weight: 5,
-            opacity: 0.8
-        }).addTo(map);
-        
-        // Fit map to route
-        map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-        
-        // Close modal
+    });
+
+    section.innerHTML = html;
+  }
+
+  function getRiskBadge(riskLevel) {
+    const badges = {
+      safe: '<span class="badge bg-success">An toàn</span>',
+      low: '<span class="badge bg-info">Rủi ro thấp</span>',
+      medium: '<span class="badge bg-warning">Rủi ro TB</span>',
+      high: '<span class="badge bg-danger">Rủi ro cao</span>',
+      critical: '<span class="badge bg-dark">Rất nguy hiểm</span>',
+    };
+    return badges[riskLevel] || badges["medium"];
+  }
+
+  function selectRoute(routeIndex) {
+    const route = alternativeRoutesData[routeIndex];
+    console.log("✅ Selected route:", route);
+
+    // Clear existing route layers
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+        map.removeLayer(layer);
+      }
+    });
+
+    // Draw selected route on map
+    const routeCoords = route.path.map((p) => [p.lat, p.lng]);
+    const routeLine = L.polyline(routeCoords, {
+      color: route.recommended ? "#28a745" : "#007bff",
+      weight: 5,
+      opacity: 0.8,
+    }).addTo(map);
+
+    // Fit map to route
+    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+
+    // Close modal
+    closeHazardModal();
+
+    // Show success message
+    alert(
+      `✅ Đã chọn: ${route.route_name}\n` +
+        `📍 Khoảng cách: ${route.distance_km} km\n` +
+        `⏱️ Thời gian: ${route.estimated_time_minutes} phút\n` +
+        `💰 Chi phí: ${route.estimated_cost_vnd.toLocaleString()} đ`,
+    );
+  }
+
+  function closeHazardModal() {
+    document.getElementById("hazardModal").classList.remove("show");
+  }
+
+  function getSeverityBadgeClass(severity) {
+    const classes = {
+      critical: "danger",
+      high: "warning",
+      medium: "info",
+      low: "secondary",
+    };
+    return classes[severity] || "secondary";
+  }
+
+  // Close modal when clicking outside
+  document
+    .getElementById("hazardModal")
+    .addEventListener("click", function (e) {
+      if (e.target === this) {
         closeHazardModal();
-        
-        // Show success message
-        alert(`✅ Đã chọn: ${route.route_name}\n` +
-              `📍 Khoảng cách: ${route.distance_km} km\n` +
-              `⏱️ Thời gian: ${route.estimated_time_minutes} phút\n` +
-              `💰 Chi phí: ${route.estimated_cost_vnd.toLocaleString()} đ`);
-    }
-    
-    function closeHazardModal() {
-        document.getElementById('hazardModal').classList.remove('show');
-    }
-    
-    function getSeverityBadgeClass(severity) {
-        const classes = {
-            'critical': 'danger',
-            'high': 'warning',
-            'medium': 'info',
-            'low': 'secondary'
-        };
-        return classes[severity] || 'secondary';
-    }
-    
-    // Close modal when clicking outside
-    document.getElementById('hazardModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeHazardModal();
-        }
+      }
     });
 </script>
 {% endblock %}
