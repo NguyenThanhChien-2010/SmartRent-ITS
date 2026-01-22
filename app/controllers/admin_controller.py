@@ -421,13 +421,28 @@ def respond_alert(alert_id):
     alert = EmergencyAlert.query.get_or_404(alert_id)
     data = request.get_json()
     
-    alert.status = 'acknowledged'
-    alert.response_team = data.get('response_team')
-    alert.response_time = datetime.utcnow()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    # Update status if provided
+    if 'status' in data:
+        alert.status = data['status']
+    
+    # Update response team if provided
+    if 'response_team' in data:
+        alert.response_team = data['response_team']
+    
+    # Update response/resolution notes if provided
+    if 'response' in data:
+        alert.resolution_notes = data['response']
+    
+    # Set response time if not already set
+    if not alert.response_time:
+        alert.response_time = datetime.utcnow()
     
     try:
         db.session.commit()
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Đã cập nhật cảnh báo'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
