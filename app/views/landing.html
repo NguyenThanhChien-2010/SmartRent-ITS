@@ -47,19 +47,7 @@ thông minh{% endblock %} {% block content %}
   <div class="container mt-5" style="margin-bottom: 0; padding-bottom: 3rem">
     <!-- Quick Stats -->
     <div class="row g-4 mb-5">
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100 hover-lift">
-          <div class="card-body text-center p-4">
-            <i class="fas fa-bicycle fa-4x text-primary mb-3"></i>
-            <h4 class="card-title fw-bold">Xe đạp điện</h4>
-            <p class="text-muted mb-0">
-              Từ <strong class="text-primary">500 ₫/phút</strong>
-            </p>
-            <small class="text-muted">Thân thiện môi trường</small>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <div class="card border-0 shadow-sm h-100 hover-lift">
           <div class="card-body text-center p-4">
             <i class="fas fa-motorcycle fa-4x text-success mb-3"></i>
@@ -71,7 +59,7 @@ thông minh{% endblock %} {% block content %}
           </div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <div class="card border-0 shadow-sm h-100 hover-lift">
           <div class="card-body text-center p-4">
             <i class="fas fa-car fa-4x text-info mb-3"></i>
@@ -311,8 +299,14 @@ thông minh{% endblock %} {% block content %}
               href="{{ url_for('auth.register') }}"
               class="btn btn-light btn-lg px-5 py-3 rounded-3 fw-semibold shadow-lg"
               style="transition: all 0.3s ease"
-              onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.2)'"
-              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+              onmouseover="
+                this.style.transform = 'translateY(-3px)';
+                this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.2)';
+              "
+              onmouseout="
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+              "
             >
               <i class="fas fa-rocket me-2"></i>Bắt đầu ngay
             </a>
@@ -324,7 +318,9 @@ thông minh{% endblock %} {% block content %}
 
   <style>
     .hover-lift {
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
     }
     .hover-lift:hover {
       transform: translateY(-5px);

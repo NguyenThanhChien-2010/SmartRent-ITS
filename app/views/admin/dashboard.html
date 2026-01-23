@@ -132,11 +132,7 @@ endblock %} {% block content %}
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Row 2: Hazard Zones & Route Analytics -->
-  <div class="row mb-3">
-    <div class="col-md-6">
+    <div class="col">
       <a
         href="{{ url_for('admin.hazard_zones') }}"
         class="text-decoration-none"
@@ -146,36 +142,23 @@ endblock %} {% block content %}
           style="cursor: pointer; transition: all 0.3s"
         >
           <div class="card-body">
-            <h6>
-              <i class="fas fa-map-marked-alt text-danger"></i> Vùng Nguy Hiểm
-            </h6>
-            <h4 class="text-danger">{{ stats.get('hazard_zones', 0) }}</h4>
-            <small class="text-muted">Zones đang active</small>
-            <div class="mt-2">
-              <i class="fas fa-arrow-right text-primary"></i>
-              <small>Quản lý zones</small>
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fas fa-map-marked-alt text-danger"></i> Vùng Nguy
+                  Hiểm
+                </h6>
+                <h3 class="mb-0 text-danger">
+                  {{ stats.get('hazard_zones', 0) }}
+                </h3>
+              </div>
+              <div class="fs-1 opacity-50 text-danger">
+                <i class="fas fa-map-marked-alt"></i>
+              </div>
             </div>
-          </div>
-        </div>
-      </a>
-    </div>
-    <div class="col-md-6">
-      <a
-        href="{{ url_for('admin.route_analytics') }}"
-        class="text-decoration-none"
-      >
-        <div
-          class="card border-info shadow-sm hover-shadow"
-          style="cursor: pointer; transition: all 0.3s"
-        >
-          <div class="card-body">
-            <h6><i class="fas fa-chart-line text-info"></i> Route Analytics</h6>
-            <h4 class="text-info">TIER 1</h4>
-            <small class="text-muted">Thống kê routes đã plan</small>
-            <div class="mt-2">
-              <i class="fas fa-arrow-right text-primary"></i>
-              <small>Xem dashboard</small>
-            </div>
+            <small class="mt-2 d-block opacity-75">
+              <i class="fas fa-arrow-right"></i> Quản lý zones
+            </small>
           </div>
         </div>
       </a>
